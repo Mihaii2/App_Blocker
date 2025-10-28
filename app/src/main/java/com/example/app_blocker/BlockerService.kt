@@ -3,8 +3,12 @@ package com.example.app_blocker
 import android.accessibilityservice.AccessibilityService
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -12,14 +16,23 @@ import androidx.core.app.NotificationCompat
 import java.util.LinkedList
 import java.util.Queue
 
-class BlockerService : AccessibilityService() {
+class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     private val CHANNEL_ID = "BlockerServiceChannel"
     private val TAG = "BlockerService"
+    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var keywords: Set<String>
+    private var blockingEnabled = true
+    private var blockingDelay = 1000
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.d(TAG, "onServiceConnected: Service has been connected.")
+        sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
+        sharedPreferences.registerOnSharedPreferenceChangeListener(this)
+        keywords = sharedPreferences.getStringSet("keywords", setOf("facebook.com", "facebook", "instagram")) ?: setOf()
+        blockingEnabled = sharedPreferences.getBoolean("blockingEnabled", true)
+        blockingDelay = sharedPreferences.getInt("blockingDelay", 1000)
         startAsForegroundService()
     }
 
@@ -53,11 +66,11 @@ class BlockerService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) {
+        if (event == null || !blockingEnabled) {
             return
         }
-        
-        Log.d(TAG, "onAccessibilityEvent: Received event type: " + AccessibilityEvent.eventTypeToString(event.eventType))
+
+        Log.d(TAG, "onAccessibilityEvent: Received event type: " + AccessibilityEvent.eventTypeToString(event.eventType) + " from package: " + event.packageName)
 
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val rootNode = rootInActiveWindow
@@ -65,12 +78,19 @@ class BlockerService : AccessibilityService() {
                 Log.d(TAG, "onAccessibilityEvent: Root node is null.")
                 return
             }
+
+            val rootPackageName = rootNode.packageName
+            if (rootPackageName != null && rootPackageName.toString() == applicationContext.packageName) {
+                Log.d(TAG, "onAccessibilityEvent: Active window is own app ($rootPackageName), ignoring.")
+                rootNode.recycle()
+                return
+            }
+
             checkForKeywords(rootNode)
         }
     }
 
     private fun checkForKeywords(rootNode: AccessibilityNodeInfo) {
-        val keywords = listOf("facebook.com", "facebook", "instagram") // Hardcoded for now
         val queue: Queue<AccessibilityNodeInfo> = LinkedList()
         queue.add(rootNode)
 
@@ -82,14 +102,14 @@ class BlockerService : AccessibilityService() {
 
             if (text != null && keywords.any { text.contains(it, ignoreCase = true) }) {
                 Log.d(TAG, "checkForKeywords: Found keyword in text: '$text'")
-                performGlobalAction(GLOBAL_ACTION_BACK)
+                closeAppWithDelay()
                 node.recycle()
-                return 
+                return
             }
 
             if (description != null && keywords.any { description.contains(it, ignoreCase = true) }) {
                 Log.d(TAG, "checkForKeywords: Found keyword in description: '$description'")
-                performGlobalAction(GLOBAL_ACTION_BACK)
+                closeAppWithDelay()
                 node.recycle()
                 return
             }
@@ -104,12 +124,33 @@ class BlockerService : AccessibilityService() {
         }
     }
 
+    private fun closeAppWithDelay() {
+        Handler(Looper.getMainLooper()).postDelayed({
+            performGlobalAction(GLOBAL_ACTION_BACK)
+        }, blockingDelay.toLong())
+    }
+
     override fun onInterrupt() {
         Log.d(TAG, "onInterrupt: Service has been interrupted.")
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.d(TAG, "onUnbind: Service has been unbound.")
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
         return super.onUnbind(intent)
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        if (key == "keywords") {
+            keywords = sharedPreferences?.getStringSet("keywords", setOf("facebook.com", "facebook", "instagram")) ?: setOf()
+            Log.d(TAG, "onSharedPreferenceChanged: Keywords updated.")
+        } else if (key == "blockingEnabled") {
+            blockingEnabled = sharedPreferences?.getBoolean("blockingEnabled", true) ?: true
+            Log.d(TAG, "onSharedPreferenceChanged: Blocking enabled updated to: $blockingEnabled")
+        } else if (key == "blockingDelay") {
+            blockingDelay = sharedPreferences?.getInt("blockingDelay", 1000) ?: 1000
+            Log.d(TAG, "onSharedPreferenceChanged: Blocking delay updated to: $blockingDelay")
+        }
     }
 }

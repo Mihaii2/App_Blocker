@@ -1,7 +1,9 @@
 package com.example.app_blocker
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -10,17 +12,22 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import android.widget.Button
+import android.widget.EditText
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.switchmaterial.SwitchMaterial
 
 class MainActivity : AppCompatActivity() {
 
     private val NOTIFICATION_PERMISSION_CODE = 1001
     private val TAG = "MainActivity"
+    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var blockingSwitch: SwitchMaterial
+    private lateinit var delayInput: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,9 +40,20 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
+        blockingSwitch = findViewById(R.id.blockingSwitch)
+        delayInput = findViewById(R.id.delayInput)
+
+        blockingSwitch.isChecked = sharedPreferences.getBoolean("blockingEnabled", true)
+        delayInput.setText(sharedPreferences.getInt("blockingDelay", 1000).toString())
+
+        blockingSwitch.setOnCheckedChangeListener { _, isChecked ->
+            sharedPreferences.edit().putBoolean("blockingEnabled", isChecked).apply()
+        }
+
         findViewById<Button>(R.id.manageKeywordsButton).setOnClickListener {
             Log.d(TAG, "onCreate: Manage Keywords button clicked.")
-            // TODO: Open keyword management screen
+            startActivity(Intent(this, KeywordsActivity::class.java))
         }
 
         findViewById<Button>(R.id.enableServiceButton).setOnClickListener {
@@ -45,6 +63,12 @@ class MainActivity : AppCompatActivity() {
 
         requestIgnoreBatteryOptimizations()
         requestNotificationPermission()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        val delay = delayInput.text.toString().toIntOrNull() ?: 1000
+        sharedPreferences.edit().putInt("blockingDelay", delay).apply()
     }
 
     private fun requestIgnoreBatteryOptimizations() {
