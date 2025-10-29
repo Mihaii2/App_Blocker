@@ -1,5 +1,6 @@
 package com.example.app_blocker
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -15,6 +16,8 @@ import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
@@ -24,7 +27,7 @@ import java.util.concurrent.TimeUnit
 class TimerService : Service() {
 
     private lateinit var windowManager: WindowManager
-    private lateinit var floatingView: android.view.View
+    private lateinit var floatingView: View
     private lateinit var timerText: TextView
     private lateinit var sharedPreferences: SharedPreferences
 
@@ -51,16 +54,19 @@ class TimerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate() {
         super.onCreate()
         Log.d("TimerService", "onCreate")
 
         sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
         totalUsageToday = sharedPreferences.getLong("totalUsageToday", 0L)
+        val transparency = sharedPreferences.getFloat("timerTransparency", 0.8f)
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         floatingView = LayoutInflater.from(this).inflate(R.layout.floating_timer_layout, null)
         timerText = floatingView.findViewById(R.id.timerText)
+        floatingView.alpha = transparency
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -78,6 +84,32 @@ class TimerService : Service() {
         } catch (e: Exception) {
             Log.e("TimerService", "Error adding view to window manager", e)
         }
+
+        floatingView.setOnTouchListener(object : View.OnTouchListener {
+            private var initialX: Int = 0
+            private var initialY: Int = 0
+            private var initialTouchX: Float = 0f
+            private var initialTouchY: Float = 0f
+
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        initialX = params.x
+                        initialY = params.y
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        params.x = initialX + (event.rawX - initialTouchX).toInt()
+                        params.y = initialY + (event.rawY - initialTouchY).toInt()
+                        windowManager.updateViewLayout(floatingView, params)
+                        return true
+                    }
+                }
+                return false
+            }
+        })
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -113,11 +145,18 @@ class TimerService : Service() {
         if (newState != currentColorState) {
             currentColorState = newState
             val color = when (newState) {
-                0 -> Color.GREEN
-                1 -> Color.YELLOW
-                2 -> Color.rgb(255, 165, 0) // Orange
-                else -> Color.RED
+                0 -> Color.parseColor("#388E3C") // Dark Green
+                1 -> Color.parseColor("#FBC02D") // Amber
+                2 -> Color.parseColor("#F57C00") // Orange
+                else -> Color.parseColor("#D32F2F") // Red
             }
+
+            if (newState == 1) { // Amber
+                timerText.setTextColor(Color.BLACK)
+            } else {
+                timerText.setTextColor(Color.WHITE)
+            }
+
             val background = DrawableCompat.wrap(floatingView.background).mutate()
             DrawableCompat.setTint(background, color)
         }
