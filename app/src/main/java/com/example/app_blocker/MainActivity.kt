@@ -1,6 +1,9 @@
 package com.example.app_blocker
 
 import android.Manifest
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -13,6 +16,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -20,10 +24,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.switchmaterial.SwitchMaterial
+import java.util.Calendar
 
 class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialogListener {
 
     private val NOTIFICATION_PERMISSION_CODE = 1001
+    private val OVERLAY_PERMISSION_CODE = 1002
     private val TAG = "MainActivity"
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var blockingSwitch: SwitchMaterial
@@ -66,9 +72,26 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
             Log.d(TAG, "onCreate: Enable Service button clicked.")
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
+        
+        findViewById<Button>(R.id.enableAutostartButton).setOnClickListener {
+            val intent = Intent()
+            intent.component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
+            startActivity(intent)
+        }
+
+        findViewById<Button>(R.id.startTrackingButton).setOnClickListener {
+            val intent = Intent(this, ScreenTimeTrackerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        }
 
         requestIgnoreBatteryOptimizations()
         requestNotificationPermission()
+        checkOverlayPermission()
+        scheduleMidnightReset()
     }
 
     override fun onPause() {
@@ -98,6 +121,51 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_CODE)
             } else {
                 Log.d(TAG, "requestNotificationPermission: Notification permission already granted.")
+            }
+        }
+    }
+
+    private fun checkOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                startActivityForResult(intent, OVERLAY_PERMISSION_CODE)
+            }
+        }
+    }
+
+    private fun scheduleMidnightReset() {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, MidnightReceiver::class.java).apply {
+            action = "com.example.app_blocker.MIDNIGHT"
+        }
+        val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = System.currentTimeMillis()
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1) // Set for tomorrow midnight
+        }
+
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            AlarmManager.INTERVAL_DAY,
+            pendingIntent
+        )
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OVERLAY_PERMISSION_CODE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    // Permission granted
+                } else {
+                    Toast.makeText(this, "Overlay permission is required for the timer to work.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

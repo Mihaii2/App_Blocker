@@ -24,10 +24,32 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Enable Accessibility Service"
-        app:layout_constraintBottom_toTopOf="@+id/blockingSwitch"
+        app:layout_constraintBottom_toTopOf="@+id/enableAutostartButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/manageKeywordsButton" />
+
+    <Button
+        android:id="@+id/enableAutostartButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Enable Autostart"
+        app:layout_constraintBottom_toTopOf="@+id/startTrackingButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/enableServiceButton" />
+
+    <Button
+        android:id="@+id/startTrackingButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Start Tracking Service"
+        app:layout_constraintBottom_toTopOf="@+id/blockingSwitch"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/enableAutostartButton" />
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/blockingSwitch"
@@ -38,7 +60,7 @@
         app:layout_constraintBottom_toTopOf="@+id/delayInput"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/enableServiceButton" />
+        app:layout_constraintTop_toBottomOf="@+id/startTrackingButton" />
 
     <EditText
         android:id="@+id/delayInput"

@@ -15,6 +15,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.app.NotificationCompat
 import java.util.LinkedList
 import java.util.Queue
+import java.util.concurrent.Executors
 
 class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -24,13 +25,16 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
     private lateinit var keywords: Set<String>
     private var blockingEnabled = true
     private var blockingDelay = 500
+    private val executor = Executors.newSingleThreadExecutor()
+    private val handler = Handler(Looper.getMainLooper())
+    private var lastCheckTime = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.d(TAG, "onServiceConnected: Service has been connected.")
         sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
         sharedPreferences.registerOnSharedPreferenceChangeListener(this)
-        keywords = sharedPreferences.getStringSet("keywords", setOf("facebook.com", "facebook", "instagram")) ?: setOf()
+        keywords = sharedPreferences.getStringSet("keywords", setOf()) ?: setOf()
         blockingEnabled = sharedPreferences.getBoolean("blockingEnabled", true)
         blockingDelay = sharedPreferences.getInt("blockingDelay", 500)
         startAsForegroundService()
@@ -41,7 +45,7 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("App Blocker")
             .setContentText("Service is running.")
-            .setSmallIcon(R.mipmap.ic_launcher) // Replace with your app's icon
+            .setSmallIcon(R.mipmap.ic_launcher)
             .build()
         startForeground(1, notification)
         Log.d(TAG, "startAsForegroundService: Service started in foreground.")
@@ -66,31 +70,36 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || !blockingEnabled) {
+        if (event == null || !blockingEnabled || keywords.isEmpty()) {
+            return
+        }
+        
+        val rootNode = rootInActiveWindow ?: return
+
+        // Ignore events from our own app
+        if (rootNode.packageName != null && rootNode.packageName.toString() == applicationContext.packageName) {
+            rootNode.recycle()
             return
         }
 
-        Log.d(TAG, "onAccessibilityEvent: Received event type: " + AccessibilityEvent.eventTypeToString(event.eventType) + " from package: " + event.packageName)
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastCheckTime < 250) { // Debounce check
+            rootNode.recycle()
+            return
+        }
+        lastCheckTime = currentTime
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val rootNode = rootInActiveWindow
-            if (rootNode == null) {
-                Log.d(TAG, "onAccessibilityEvent: Root node is null.")
-                return
+        executor.execute {
+            if (checkForKeywords(rootNode)) {
+                handler.postDelayed({
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                }, blockingDelay.toLong())
             }
-
-            val rootPackageName = rootNode.packageName
-            if (rootPackageName != null && rootPackageName.toString() == applicationContext.packageName) {
-                Log.d(TAG, "onAccessibilityEvent: Active window is own app ($rootPackageName), ignoring.")
-                rootNode.recycle()
-                return
-            }
-
-            checkForKeywords(rootNode)
+            rootNode.recycle()
         }
     }
 
-    private fun checkForKeywords(rootNode: AccessibilityNodeInfo) {
+    private fun checkForKeywords(rootNode: AccessibilityNodeInfo): Boolean {
         val queue: Queue<AccessibilityNodeInfo> = LinkedList()
         queue.add(rootNode)
 
@@ -102,16 +111,12 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
 
             if (text != null && keywords.any { text.contains(it, ignoreCase = true) }) {
                 Log.d(TAG, "checkForKeywords: Found keyword in text: '$text'")
-                closeAppWithDelay()
-                node.recycle()
-                return
+                return true
             }
 
             if (description != null && keywords.any { description.contains(it, ignoreCase = true) }) {
                 Log.d(TAG, "checkForKeywords: Found keyword in description: '$description'")
-                closeAppWithDelay()
-                node.recycle()
-                return
+                return true
             }
 
             for (i in 0 until node.childCount) {
@@ -120,14 +125,8 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
                     queue.add(child)
                 }
             }
-            node.recycle()
         }
-    }
-
-    private fun closeAppWithDelay() {
-        Handler(Looper.getMainLooper()).postDelayed({
-            performGlobalAction(GLOBAL_ACTION_BACK)
-        }, blockingDelay.toLong())
+        return false
     }
 
     override fun onInterrupt() {
@@ -142,15 +141,19 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        if (key == "keywords") {
-            keywords = sharedPreferences?.getStringSet("keywords", setOf("facebook.com", "facebook", "instagram")) ?: setOf()
-            Log.d(TAG, "onSharedPreferenceChanged: Keywords updated.")
-        } else if (key == "blockingEnabled") {
-            blockingEnabled = sharedPreferences?.getBoolean("blockingEnabled", true) ?: true
-            Log.d(TAG, "onSharedPreferenceChanged: Blocking enabled updated to: $blockingEnabled")
-        } else if (key == "blockingDelay") {
-            blockingDelay = sharedPreferences?.getInt("blockingDelay", 500) ?: 500
-            Log.d(TAG, "onSharedPreferenceChanged: Blocking delay updated to: $blockingDelay")
+        when (key) {
+            "keywords" -> {
+                keywords = sharedPreferences?.getStringSet("keywords", setOf()) ?: setOf()
+                Log.d(TAG, "onSharedPreferenceChanged: Keywords updated.")
+            }
+            "blockingEnabled" -> {
+                blockingEnabled = sharedPreferences?.getBoolean("blockingEnabled", true) ?: true
+                Log.d(TAG, "onSharedPreferenceChanged: Blocking enabled updated to: $blockingEnabled")
+            }
+            "blockingDelay" -> {
+                blockingDelay = sharedPreferences?.getInt("blockingDelay", 500) ?: 500
+                Log.d(TAG, "onSharedPreferenceChanged: Blocking delay updated to: $blockingDelay")
+            }
         }
     }
 }
