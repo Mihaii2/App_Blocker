@@ -21,7 +21,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.switchmaterial.SwitchMaterial
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialogListener {
 
     private val NOTIFICATION_PERMISSION_CODE = 1001
     private val TAG = "MainActivity"
@@ -45,10 +45,16 @@ class MainActivity : AppCompatActivity() {
         delayInput = findViewById(R.id.delayInput)
 
         blockingSwitch.isChecked = sharedPreferences.getBoolean("blockingEnabled", true)
-        delayInput.setText(sharedPreferences.getInt("blockingDelay", 1000).toString())
+        delayInput.setText(sharedPreferences.getInt("blockingDelay", 500).toString())
 
         blockingSwitch.setOnCheckedChangeListener { _, isChecked ->
-            sharedPreferences.edit().putBoolean("blockingEnabled", isChecked).apply()
+            if (!isChecked) {
+                val dialog = CountdownDialogFragment.newInstance("You have to wait 30 seconds before disabling blocking", "Disable")
+                dialog.show(supportFragmentManager, "CountdownDialogFragment")
+                blockingSwitch.isChecked = true
+            } else {
+                sharedPreferences.edit().putBoolean("blockingEnabled", true).apply()
+            }
         }
 
         findViewById<Button>(R.id.manageKeywordsButton).setOnClickListener {
@@ -103,6 +109,25 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "onRequestPermissionsResult: Notification permission granted.")
             } else {
                 Log.d(TAG, "onRequestPermissionsResult: Notification permission denied.")
+            }
+        }
+    }
+
+    override fun onDialogDismissed() {
+        // Nothing to do here
+    }
+
+    override fun onActionConfirmed() {
+        blockingSwitch.setOnCheckedChangeListener(null)
+        blockingSwitch.isChecked = false
+        sharedPreferences.edit().putBoolean("blockingEnabled", false).apply()
+        blockingSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (!isChecked) {
+                val dialog = CountdownDialogFragment.newInstance("You have to wait 30 seconds before disabling blocking", "Disable")
+                dialog.show(supportFragmentManager, "CountdownDialogFragment")
+                blockingSwitch.isChecked = true
+            } else {
+                sharedPreferences.edit().putBoolean("blockingEnabled", true).apply()
             }
         }
     }

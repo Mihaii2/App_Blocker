@@ -8,10 +8,9 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ListView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 
-class KeywordsActivity : AppCompatActivity() {
+class KeywordsActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialogListener {
 
     private lateinit var editTextKeyword: EditText
     private lateinit var buttonAddKeyword: Button
@@ -19,6 +18,7 @@ class KeywordsActivity : AppCompatActivity() {
     private lateinit var keywords: MutableSet<String>
     private lateinit var adapter: ArrayAdapter<String>
     private lateinit var sharedPreferences: SharedPreferences
+    private var keywordToRemove: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,17 +47,9 @@ class KeywordsActivity : AppCompatActivity() {
         }
 
         listViewKeywords.setOnItemLongClickListener { _, _, position, _ ->
-            val keywordToRemove = adapter.getItem(position)
-            AlertDialog.Builder(this)
-                .setTitle("Remove Keyword")
-                .setMessage("Are you sure you want to remove \"$keywordToRemove\"?")
-                .setPositiveButton("Yes") { _, _ ->
-                    keywords.remove(keywordToRemove)
-                    saveKeywords()
-                    updateListView()
-                }
-                .setNegativeButton("No", null)
-                .show()
+            keywordToRemove = adapter.getItem(position)
+            val dialog = CountdownDialogFragment.newInstance("You have to wait 30 seconds before removing a keyword", "Remove")
+            dialog.show(supportFragmentManager, "CountdownDialogFragment")
             true
         }
     }
@@ -70,5 +62,18 @@ class KeywordsActivity : AppCompatActivity() {
         adapter.clear()
         adapter.addAll(keywords.toList())
         adapter.notifyDataSetChanged()
+    }
+
+    override fun onDialogDismissed() {
+        keywordToRemove = null
+    }
+
+    override fun onActionConfirmed() {
+        if (keywordToRemove != null) {
+            keywords.remove(keywordToRemove)
+            saveKeywords()
+            updateListView()
+            keywordToRemove = null
+        }
     }
 }

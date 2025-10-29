@@ -23,7 +23,7 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var keywords: Set<String>
     private var blockingEnabled = true
-    private var blockingDelay = 1000
+    private var blockingDelay = 500
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -32,7 +32,7 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         sharedPreferences.registerOnSharedPreferenceChangeListener(this)
         keywords = sharedPreferences.getStringSet("keywords", setOf("facebook.com", "facebook", "instagram")) ?: setOf()
         blockingEnabled = sharedPreferences.getBoolean("blockingEnabled", true)
-        blockingDelay = sharedPreferences.getInt("blockingDelay", 1000)
+        blockingDelay = sharedPreferences.getInt("blockingDelay", 500)
         startAsForegroundService()
     }
 
@@ -149,7 +149,7 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
             blockingEnabled = sharedPreferences?.getBoolean("blockingEnabled", true) ?: true
             Log.d(TAG, "onSharedPreferenceChanged: Blocking enabled updated to: $blockingEnabled")
         } else if (key == "blockingDelay") {
-            blockingDelay = sharedPreferences?.getInt("blockingDelay", 1000) ?: 1000
+            blockingDelay = sharedPreferences?.getInt("blockingDelay", 500) ?: 500
             Log.d(TAG, "onSharedPreferenceChanged: Blocking delay updated to: $blockingDelay")
         }
     }
