@@ -76,8 +76,8 @@ class TimerService : Service() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = 0
-        params.y = 100
+        params.x = sharedPreferences.getInt("timer_position_x", 0)
+        params.y = sharedPreferences.getInt("timer_position_y", 100)
 
         try {
             windowManager.addView(floatingView, params)
@@ -98,6 +98,13 @@ class TimerService : Service() {
                         initialY = params.y
                         initialTouchX = event.rawX
                         initialTouchY = event.rawY
+                        return true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        sharedPreferences.edit()
+                            .putInt("timer_position_x", params.x)
+                            .putInt("timer_position_y", params.y)
+                            .apply()
                         return true
                     }
                     MotionEvent.ACTION_MOVE -> {

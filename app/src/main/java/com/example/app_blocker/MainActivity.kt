@@ -16,6 +16,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -34,6 +35,7 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var blockingSwitch: SwitchMaterial
     private lateinit var delayInput: EditText
+    private lateinit var transparencySeekBar: SeekBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,9 +51,11 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
         sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
         blockingSwitch = findViewById(R.id.blockingSwitch)
         delayInput = findViewById(R.id.delayInput)
+        transparencySeekBar = findViewById(R.id.transparencySeekBar)
 
         blockingSwitch.isChecked = sharedPreferences.getBoolean("blockingEnabled", true)
         delayInput.setText(sharedPreferences.getInt("blockingDelay", 500).toString())
+        transparencySeekBar.progress = (sharedPreferences.getFloat("timerTransparency", 0.8f) * 100).toInt()
 
         blockingSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (!isChecked) {
@@ -62,6 +66,19 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
                 sharedPreferences.edit().putBoolean("blockingEnabled", true).apply()
             }
         }
+
+        transparencySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val transparency = progress / 100f
+                sharedPreferences.edit().putFloat("timerTransparency", transparency).apply()
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                restartTimerService()
+            }
+        })
 
         findViewById<Button>(R.id.manageKeywordsButton).setOnClickListener {
             Log.d(TAG, "onCreate: Manage Keywords button clicked.")
@@ -92,6 +109,15 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
         requestNotificationPermission()
         checkOverlayPermission()
         scheduleMidnightReset()
+    }
+
+    private fun restartTimerService() {
+        stopService(Intent(this, TimerService::class.java))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(Intent(this, TimerService::class.java))
+        } else {
+            startService(Intent(this, TimerService::class.java))
+        }
     }
 
     override fun onPause() {

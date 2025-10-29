@@ -71,9 +71,30 @@
         android:hint="Exit Delay (milliseconds)"
         android:inputType="number"
         android:minHeight="48dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/transparencyLabel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/blockingSwitch" />
+
+    <TextView
+        android:id="@+id/transparencyLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Timer Transparency"
+        app:layout_constraintBottom_toTopOf="@+id/transparencySeekBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/delayInput" />
+
+    <SeekBar
+        android:id="@+id/transparencySeekBar"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:max="100"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/transparencyLabel" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -73,7 +73,12 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         if (event == null || !blockingEnabled || keywords.isEmpty()) {
             return
         }
-        
+
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            return
+        }
+
         val rootNode = rootInActiveWindow ?: return
 
         // Ignore events from our own app
@@ -102,9 +107,14 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
     private fun checkForKeywords(rootNode: AccessibilityNodeInfo): Boolean {
         val queue: Queue<AccessibilityNodeInfo> = LinkedList()
         queue.add(rootNode)
+        val visitedNodes = HashSet<AccessibilityNodeInfo>()
 
         while (queue.isNotEmpty()) {
             val node = queue.poll() ?: continue
+
+            if (!visitedNodes.add(node)) {
+                continue
+            }
 
             val text = node.text?.toString()
             val description = node.contentDescription?.toString()
@@ -128,6 +138,7 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         }
         return false
     }
+
 
     override fun onInterrupt() {
         Log.d(TAG, "onInterrupt: Service has been interrupted.")
