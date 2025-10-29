@@ -3,7 +3,6 @@ package com.example.app_blocker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -15,11 +14,7 @@ class UnlockReceiver : BroadcastReceiver() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
                 Log.d("UnlockReceiver", "Overlay permission is granted, starting service")
                 val serviceIntent = Intent(context, TimerService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
+                context.startService(serviceIntent)
             } else {
                 Log.d("UnlockReceiver", "Overlay permission is NOT granted")
             }

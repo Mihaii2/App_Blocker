@@ -1,9 +1,6 @@
 package com.example.app_blocker
 
 import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -20,7 +17,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
-import androidx.core.app.NotificationCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import java.util.concurrent.TimeUnit
 
@@ -121,18 +117,6 @@ class TimerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("TimerService", "onStartCommand")
-        createNotificationChannel()
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
-
-        val notification = NotificationCompat.Builder(this, "TimerServiceChannel")
-            .setContentTitle("Usage Timer")
-            .setContentText("Tracking phone usage")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentIntent(pendingIntent)
-            .build()
-
-        startForeground(1, notification)
 
         sessionStartTime = System.currentTimeMillis()
         handler.post(timerRunnable)
@@ -181,15 +165,4 @@ class TimerService : Service() {
         sharedPreferences.edit().putLong("totalUsageToday", totalUsageToday + elapsed).apply()
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val serviceChannel = NotificationChannel(
-                "TimerServiceChannel",
-                "Timer Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(serviceChannel)
-        }
-    }
 }

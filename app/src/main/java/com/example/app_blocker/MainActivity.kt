@@ -1,13 +1,11 @@
 package com.example.app_blocker
 
-import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -20,8 +18,6 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -29,7 +25,6 @@ import java.util.Calendar
 
 class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialogListener {
 
-    private val NOTIFICATION_PERMISSION_CODE = 1001
     private val OVERLAY_PERMISSION_CODE = 1002
     private val TAG = "MainActivity"
     private lateinit var sharedPreferences: SharedPreferences
@@ -98,26 +93,17 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
 
         findViewById<Button>(R.id.startTrackingButton).setOnClickListener {
             val intent = Intent(this, ScreenTimeTrackerService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
+            startService(intent)
         }
 
         requestIgnoreBatteryOptimizations()
-        requestNotificationPermission()
         checkOverlayPermission()
         scheduleMidnightReset()
     }
 
     private fun restartTimerService() {
         stopService(Intent(this, TimerService::class.java))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(Intent(this, TimerService::class.java))
-        } else {
-            startService(Intent(this, TimerService::class.java))
-        }
+        startService(Intent(this, TimerService::class.java))
     }
 
     override fun onPause() {
@@ -137,17 +123,6 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
             startActivity(intent)
         } else {
             Log.d(TAG, "requestIgnoreBatteryOptimizations: Already ignoring battery optimizations.")
-        }
-    }
-
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "requestNotificationPermission: Requesting notification permission.")
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_CODE)
-            } else {
-                Log.d(TAG, "requestNotificationPermission: Notification permission already granted.")
-            }
         }
     }
 
@@ -192,17 +167,6 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
                 } else {
                     Toast.makeText(this, "Overlay permission is required for the timer to work.", Toast.LENGTH_LONG).show()
                 }
-            }
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == NOTIFICATION_PERMISSION_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "onRequestPermissionsResult: Notification permission granted.")
-            } else {
-                Log.d(TAG, "onRequestPermissionsResult: Notification permission denied.")
             }
         }
     }
