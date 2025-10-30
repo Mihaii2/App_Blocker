@@ -1,20 +1,25 @@
 package com.example.app_blocker
 
 import android.accessibilityservice.AccessibilityService
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.core.app.NotificationCompat
 import java.util.LinkedList
 import java.util.Queue
 import java.util.concurrent.Executors
 
 class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
+    private val CHANNEL_ID = "BlockerServiceChannel"
     private val TAG = "BlockerService"
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var keywords: Set<String>
@@ -32,6 +37,31 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         keywords = sharedPreferences.getStringSet("keywords", setOf()) ?: setOf()
         blockingEnabled = sharedPreferences.getBoolean("blockingEnabled", true)
         blockingDelay = sharedPreferences.getInt("blockingDelay", 500)
+        startAsForegroundService()
+    }
+
+    private fun startAsForegroundService() {
+        createNotificationChannel()
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("App Blocker")
+            .setContentText("Service is running.")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .build()
+        startForeground(1, notification)
+        Log.d(TAG, "startAsForegroundService: Service started in foreground.")
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val serviceChannel = NotificationChannel(
+                CHANNEL_ID,
+                "Blocker Service Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(serviceChannel)
+            Log.d(TAG, "createNotificationChannel: Notification channel created.")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -67,7 +97,12 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         executor.execute {
             if (checkForKeywords(rootNode)) {
                 handler.postDelayed({
+                    Log.d(TAG, "Keyword detected, performing global back action")
                     performGlobalAction(GLOBAL_ACTION_BACK)
+                    handler.postDelayed({
+                        Log.d(TAG, "Issuing global home action to exit application")
+                        performGlobalAction(GLOBAL_ACTION_HOME)
+                    }, 200L)
                 }, blockingDelay.toLong())
             }
             rootNode.recycle()

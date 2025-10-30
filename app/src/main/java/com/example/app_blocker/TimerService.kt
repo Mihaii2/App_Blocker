@@ -10,6 +10,7 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -30,19 +31,19 @@ class TimerService : Service() {
     private var totalUsageToday: Long = 0
     private var sessionStartTime: Long = 0
     private var currentColorState = -1 // 0: green, 1: yellow, 2: orange, 3: red
+    private var isTimerRunning = false
 
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
         override fun run() {
+            if (!isTimerRunning) {
+                return
+            }
+
             val elapsed = System.currentTimeMillis() - sessionStartTime
             val currentTotal = totalUsageToday + elapsed
 
-            val hours = TimeUnit.MILLISECONDS.toHours(currentTotal)
-            val minutes = TimeUnit.MILLISECONDS.toMinutes(currentTotal) % 60
-            val seconds = TimeUnit.MILLISECONDS.toSeconds(currentTotal) % 60
-
-            timerText.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
-            updateBackgroundColorIfNeeded(currentTotal)
+            updateTimerDisplay(currentTotal)
 
             handler.postDelayed(this, 1000)
         }
@@ -118,8 +119,7 @@ class TimerService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("TimerService", "onStartCommand")
 
-        sessionStartTime = System.currentTimeMillis()
-        handler.post(timerRunnable)
+        startTimerIfNeeded()
 
         return START_STICKY
     }
@@ -156,13 +156,49 @@ class TimerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d("TimerService", "onDestroy")
-        handler.removeCallbacks(timerRunnable)
+        stopTimer(saveProgress = true)
         if (::floatingView.isInitialized) {
             windowManager.removeView(floatingView)
         }
+    }
 
+    private fun startTimerIfNeeded() {
+        if (isTimerRunning) {
+            return
+        }
+
+        totalUsageToday = sharedPreferences.getLong("totalUsageToday", 0L)
+        updateTimerDisplay(totalUsageToday)
+
+        sessionStartTime = System.currentTimeMillis()
+        isTimerRunning = true
+        handler.post(timerRunnable)
+    }
+
+    private fun stopTimer(saveProgress: Boolean) {
+        if (!isTimerRunning) {
+            if (saveProgress) {
+                totalUsageToday = sharedPreferences.getLong("totalUsageToday", 0L)
+            }
+            return
+        }
+
+        handler.removeCallbacks(timerRunnable)
         val elapsed = System.currentTimeMillis() - sessionStartTime
-        sharedPreferences.edit().putLong("totalUsageToday", totalUsageToday + elapsed).apply()
+        totalUsageToday += elapsed
+        if (saveProgress) {
+            sharedPreferences.edit().putLong("totalUsageToday", totalUsageToday).apply()
+        }
+        isTimerRunning = false
+        updateTimerDisplay(totalUsageToday)
+    }
+
+    private fun updateTimerDisplay(millis: Long) {
+        val hours = TimeUnit.MILLISECONDS.toHours(millis)
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
+        timerText.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        updateBackgroundColorIfNeeded(millis)
     }
 
 }
