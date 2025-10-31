@@ -96,6 +96,10 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
             startService(intent)
         }
 
+        findViewById<Button>(R.id.historyButton).setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
+
         requestIgnoreBatteryOptimizations()
         checkOverlayPermission()
         scheduleMidnightReset()

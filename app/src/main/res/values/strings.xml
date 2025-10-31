@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">App Blocker</string>
+    <string name="history_title">Usage History</string>
+    <string name="history_timeframe_label">Timeframe</string>
+    <string name="history_timeframe_daily">Daily</string>
+    <string name="history_timeframe_weekly">Weekly</string>
+    <string name="history_empty_message">No usage recorded yet.</string>
+    <string name="history_summary_format">Periods: %1$d · Avg: %2$s · Max: %3$s</string>
+    <string name="button_usage_history">Usage History</string>
+
+    <string-array name="history_timeframes">
+        <item>@string/history_timeframe_daily</item>
+        <item>@string/history_timeframe_weekly</item>
+    </string-array>
 </resources>

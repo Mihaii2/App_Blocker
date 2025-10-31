@@ -2,9 +2,11 @@ package com.example.app_blocker
 
 import android.annotation.SuppressLint
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
@@ -19,7 +21,12 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.graphics.drawable.DrawableCompat
+import java.text.SimpleDateFormat
 import java.util.concurrent.TimeUnit
+import java.util.Calendar
+import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
 
 class TimerService : Service() {
 
@@ -32,6 +39,7 @@ class TimerService : Service() {
     private var sessionStartTime: Long = 0
     private var currentColorState = -1 // 0: green, 1: yellow, 2: orange, 3: red
     private var isTimerRunning = false
+    private var midnightResetReceiverRegistered = false
 
     private val handler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
@@ -46,6 +54,13 @@ class TimerService : Service() {
             updateTimerDisplay(currentTotal)
 
             handler.postDelayed(this, 1000)
+        }
+    }
+
+    private val midnightResetReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d("TimerService", "Midnight reset broadcast received inside service")
+            performMidnightReset()
         }
     }
 
@@ -119,6 +134,12 @@ class TimerService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("TimerService", "onStartCommand")
 
+        if (intent?.action == ACTION_MIDNIGHT_RESET) {
+            Log.d("TimerService", "Handling ACTION_MIDNIGHT_RESET")
+            performMidnightReset()
+            return START_STICKY
+        }
+
         startTimerIfNeeded()
 
         return START_STICKY
@@ -160,6 +181,10 @@ class TimerService : Service() {
         if (::floatingView.isInitialized) {
             windowManager.removeView(floatingView)
         }
+        if (midnightResetReceiverRegistered) {
+            unregisterReceiver(midnightResetReceiver)
+            midnightResetReceiverRegistered = false
+        }
     }
 
     private fun startTimerIfNeeded() {
@@ -173,6 +198,7 @@ class TimerService : Service() {
         sessionStartTime = System.currentTimeMillis()
         isTimerRunning = true
         handler.post(timerRunnable)
+        ensureMidnightResetReceiver()
     }
 
     private fun stopTimer(saveProgress: Boolean) {
@@ -199,6 +225,90 @@ class TimerService : Service() {
         val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
         timerText.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
         updateBackgroundColorIfNeeded(millis)
+    }
+
+    private fun performMidnightReset() {
+        Log.d("TimerService", "performMidnightReset invoked")
+        stopTimer(saveProgress = false)
+        val previousDayUsage = totalUsageToday
+        recordUsageForPreviousDay(previousDayUsage)
+        totalUsageToday = 0L
+        sharedPreferences.edit().putLong("totalUsageToday", totalUsageToday).apply()
+        updateTimerDisplay(totalUsageToday)
+        sessionStartTime = System.currentTimeMillis()
+        isTimerRunning = true
+        handler.removeCallbacks(timerRunnable)
+        handler.post(timerRunnable)
+    }
+
+    private fun recordUsageForPreviousDay(durationMillis: Long) {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, -1)
+        val dateKey = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
+
+        val historyString = sharedPreferences.getString("usageHistory", "[]")
+        val historyArray = try {
+            JSONArray(historyString)
+        } catch (e: Exception) {
+            Log.e("TimerService", "Failed to parse usage history JSON", e)
+            JSONArray()
+        }
+
+        val entries = mutableListOf<JSONObject>()
+        for (i in 0 until historyArray.length()) {
+            val obj = historyArray.optJSONObject(i)
+            if (obj != null) {
+                entries.add(obj)
+            }
+        }
+
+        val newEntry = JSONObject().apply {
+            put("date", dateKey)
+            put("durationMillis", durationMillis.coerceAtLeast(0L))
+        }
+
+        var replaced = false
+        for (i in entries.indices) {
+            if (entries[i].optString("date") == dateKey) {
+                entries[i] = newEntry
+                replaced = true
+                break
+            }
+        }
+
+        if (!replaced) {
+            entries.add(newEntry)
+        }
+
+        entries.sortBy { it.optString("date") }
+        while (entries.size > 60) {
+            entries.removeAt(0)
+        }
+
+        val updatedArray = JSONArray()
+        entries.forEach { updatedArray.put(it) }
+        sharedPreferences.edit().putString("usageHistory", updatedArray.toString()).apply()
+    }
+
+    private fun ensureMidnightResetReceiver() {
+        if (midnightResetReceiverRegistered) {
+            return
+        }
+        val filter = IntentFilter(ACTION_MIDNIGHT_RESET)
+        registerReceiver(midnightResetReceiver, filter)
+        midnightResetReceiverRegistered = true
+        Log.d("TimerService", "Midnight reset receiver registered")
+    }
+
+    companion object {
+        const val ACTION_MIDNIGHT_RESET = "com.example.app_blocker.timer.ACTION_MIDNIGHT_RESET"
+
+        fun triggerMidnightReset(context: Context) {
+            val intent = Intent(context, TimerService::class.java).apply {
+                action = ACTION_MIDNIGHT_RESET
+            }
+            context.startService(intent)
+        }
     }
 
 }

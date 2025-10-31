@@ -34,6 +34,10 @@
             android:name=".KeywordsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".HistoryActivity"
+            android:exported="false" />
+
         <service
             android:name=".TimerService"
             android:enabled="true"

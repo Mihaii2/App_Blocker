@@ -46,10 +46,21 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Start Tracking Service"
-        app:layout_constraintBottom_toTopOf="@+id/blockingSwitch"
+        app:layout_constraintBottom_toTopOf="@+id/historyButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/enableAutostartButton" />
+
+    <Button
+        android:id="@+id/historyButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/button_usage_history"
+        app:layout_constraintBottom_toTopOf="@+id/blockingSwitch"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/startTrackingButton" />
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/blockingSwitch"
@@ -60,7 +71,7 @@
         app:layout_constraintBottom_toTopOf="@+id/delayInput"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/startTrackingButton" />
+        app:layout_constraintTop_toBottomOf="@+id/historyButton" />
 
     <EditText
         android:id="@+id/delayInput"
