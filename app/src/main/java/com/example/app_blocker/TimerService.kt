@@ -149,9 +149,9 @@ class TimerService : Service() {
     private fun updateBackgroundColorIfNeeded(millis: Long) {
         val minutes = TimeUnit.MILLISECONDS.toMinutes(millis)
         val newState = when {
-            minutes < 30 -> 0
-            minutes < 60 -> 1
-            minutes < 120 -> 2
+            minutes < 60 -> 0
+            minutes < 120 -> 1
+            minutes < 180 -> 2
             else -> 3
         }
 
