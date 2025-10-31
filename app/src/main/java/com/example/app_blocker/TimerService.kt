@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Context.RECEIVER_NOT_EXPORTED
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.IntentFilter
@@ -295,7 +296,12 @@ class TimerService : Service() {
             return
         }
         val filter = IntentFilter(ACTION_MIDNIGHT_RESET)
-        registerReceiver(midnightResetReceiver, filter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(midnightResetReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(midnightResetReceiver, filter)
+        }
         midnightResetReceiverRegistered = true
         Log.d("TimerService", "Midnight reset receiver registered")
     }
