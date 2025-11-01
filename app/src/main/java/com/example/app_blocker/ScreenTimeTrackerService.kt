@@ -8,19 +8,22 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
+import androidx.core.content.ContextCompat
 
 class ScreenTimeTrackerService : Service() {
+
+    private var receiverRegistered = false
 
     private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_USER_PRESENT -> {
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
-                        startService(Intent(context, TimerService::class.java))
+                        ContextCompat.startForegroundService(
+                            context,
+                            Intent(context, TimerService::class.java)
+                        )
                     }
-                }
-                Intent.ACTION_SCREEN_OFF -> {
-                    stopService(Intent(context, TimerService::class.java))
                 }
             }
         }
@@ -29,17 +32,34 @@ class ScreenTimeTrackerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_USER_PRESENT)
-            addAction(Intent.ACTION_SCREEN_OFF)
+        if (!receiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            ContextCompat.registerReceiver(
+                this,
+                screenStateReceiver,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+            receiverRegistered = true
         }
-        registerReceiver(screenStateReceiver, filter)
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, TimerService::class.java)
+            )
+        }
 
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(screenStateReceiver)
+        if (receiverRegistered) {
+            unregisterReceiver(screenStateReceiver)
+            receiverRegistered = false
+        }
     }
 }

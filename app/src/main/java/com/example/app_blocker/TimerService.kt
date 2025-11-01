@@ -1,6 +1,11 @@
 package com.example.app_blocker
 
 import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -12,6 +17,7 @@ import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -20,6 +26,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import java.text.SimpleDateFormat
@@ -41,6 +48,7 @@ class TimerService : Service() {
     private var currentColorState = -1 // 0: green, 1: yellow, 2: orange, 3: red
     private var isTimerRunning = false
     private var midnightResetReceiverRegistered = false
+    private var lastPersistedSecond: Long = -1
 
     private val handler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
@@ -53,6 +61,7 @@ class TimerService : Service() {
             val currentTotal = totalUsageToday + elapsed
 
             updateTimerDisplay(currentTotal)
+            persistUsageProgressIfNeeded(currentTotal)
 
             handler.postDelayed(this, 1000)
         }
@@ -80,6 +89,8 @@ class TimerService : Service() {
         floatingView = LayoutInflater.from(this).inflate(R.layout.floating_timer_layout, null)
         timerText = floatingView.findViewById(R.id.timerText)
         floatingView.alpha = transparency
+
+    startForeground(NOTIFICATION_ID, buildNotification())
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -190,6 +201,7 @@ class TimerService : Service() {
         super.onDestroy()
         Log.d("TimerService", "onDestroy")
         stopTimer(saveProgress = true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
         if (::floatingView.isInitialized) {
             windowManager.removeView(floatingView)
         }
@@ -226,6 +238,7 @@ class TimerService : Service() {
         totalUsageToday += elapsed
         if (saveProgress) {
             sharedPreferences.edit().putLong("totalUsageToday", totalUsageToday).apply()
+            lastPersistedSecond = TimeUnit.MILLISECONDS.toSeconds(totalUsageToday)
         }
         isTimerRunning = false
         updateTimerDisplay(totalUsageToday)
@@ -246,6 +259,7 @@ class TimerService : Service() {
         recordUsageForPreviousDay(previousDayUsage)
         totalUsageToday = 0L
         sharedPreferences.edit().putLong("totalUsageToday", totalUsageToday).apply()
+        lastPersistedSecond = TimeUnit.MILLISECONDS.toSeconds(totalUsageToday)
         updateTimerDisplay(totalUsageToday)
         sessionStartTime = System.currentTimeMillis()
         isTimerRunning = true
@@ -317,14 +331,87 @@ class TimerService : Service() {
         Log.d("TimerService", "Midnight reset receiver registered")
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        stopTimer(saveProgress = true)
+        scheduleServiceRestart()
+    }
+
+    private fun scheduleServiceRestart() {
+        val restartIntent = Intent(applicationContext, TimerService::class.java)
+        runCatching {
+            ContextCompat.startForegroundService(applicationContext, restartIntent)
+        }.onFailure { error ->
+            Log.w("TimerService", "Immediate restart attempt failed; will rely on alarm", error)
+        }
+        val pendingIntent = PendingIntent.getService(
+            applicationContext,
+            RESTART_REQUEST_CODE,
+            restartIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT
+        )
+        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+        val triggerAt = SystemClock.elapsedRealtime() + RESTART_DELAY_MS
+        runCatching {
+            alarmManager?.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pendingIntent)
+        }.onFailure { error ->
+            Log.e("TimerService", "Failed to schedule timer restart", error)
+        }
+    }
+
+    private fun persistUsageProgressIfNeeded(currentTotal: Long) {
+        val currentSecond = TimeUnit.MILLISECONDS.toSeconds(currentTotal)
+        if (currentSecond != lastPersistedSecond) {
+            sharedPreferences.edit().putLong("totalUsageToday", currentTotal).apply()
+            lastPersistedSecond = currentSecond
+        }
+    }
+
+    private fun buildNotification(): Notification {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                getString(R.string.timer_service_channel_name),
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                description = getString(R.string.timer_service_channel_description)
+                setShowBadge(false)
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+
+        val openIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(getString(R.string.timer_service_notification_title))
+            .setContentText(getString(R.string.timer_service_notification_text))
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .build()
+    }
+
     companion object {
         const val ACTION_MIDNIGHT_RESET = "com.example.app_blocker.timer.ACTION_MIDNIGHT_RESET"
+        private const val RESTART_REQUEST_CODE = 1001
+        private const val RESTART_DELAY_MS = 2_000L
+        private const val NOTIFICATION_ID = 1337
+        private const val NOTIFICATION_CHANNEL_ID = "timer_service_channel"
 
         fun triggerMidnightReset(context: Context) {
             val intent = Intent(context, TimerService::class.java).apply {
                 action = ACTION_MIDNIGHT_RESET
             }
-            context.startService(intent)
+            ContextCompat.startForegroundService(context, intent)
         }
     }
 

@@ -18,6 +18,7 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -111,7 +112,7 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
 
     private fun restartTimerService() {
         stopService(Intent(this, TimerService::class.java))
-        startService(Intent(this, TimerService::class.java))
+        ContextCompat.startForegroundService(this, Intent(this, TimerService::class.java))
     }
 
     override fun onPause() {
