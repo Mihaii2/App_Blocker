@@ -1,5 +1,6 @@
 package com.example.app_blocker
 
+import android.app.KeyguardManager
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -7,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 
@@ -19,11 +21,14 @@ class ScreenTimeTrackerService : Service() {
             when (intent.action) {
                 Intent.ACTION_USER_PRESENT -> {
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
-                        ContextCompat.startForegroundService(
-                            context,
-                            Intent(context, TimerService::class.java)
-                        )
+                        val intent = Intent(context, TimerService::class.java).apply {
+                            action = TimerService.ACTION_RESUME_TIMER
+                        }
+                        ContextCompat.startForegroundService(context, intent)
                     }
+                }
+                Intent.ACTION_SCREEN_OFF -> {
+                    TimerService.requestStopTimer(context)
                 }
             }
         }
@@ -35,6 +40,7 @@ class ScreenTimeTrackerService : Service() {
         if (!receiverRegistered) {
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_USER_PRESENT)
+                addAction(Intent.ACTION_SCREEN_OFF)
             }
             ContextCompat.registerReceiver(
                 this,
@@ -45,11 +51,11 @@ class ScreenTimeTrackerService : Service() {
             receiverRegistered = true
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
-            ContextCompat.startForegroundService(
-                this,
-                Intent(this, TimerService::class.java)
-            )
+        if (shouldResumeTimerNow()) {
+            val intent = Intent(this, TimerService::class.java).apply {
+                action = TimerService.ACTION_RESUME_TIMER
+            }
+            ContextCompat.startForegroundService(this, intent)
         }
 
         return START_STICKY
@@ -62,4 +68,29 @@ class ScreenTimeTrackerService : Service() {
             receiverRegistered = false
         }
     }
+
+    private fun shouldResumeTimerNow(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            return false
+        }
+
+        val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
+        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as? KeyguardManager
+
+        val isInteractive = when {
+            powerManager == null -> true
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH -> powerManager.isInteractive
+            else -> powerManager.legacyIsScreenOn()
+        }
+
+        if (!isInteractive) {
+            return false
+        }
+
+        val isLocked = keyguardManager?.isKeyguardLocked ?: false
+        return !isLocked
+    }
+
+    @Suppress("DEPRECATION")
+    private fun PowerManager.legacyIsScreenOn(): Boolean = isScreenOn
 }

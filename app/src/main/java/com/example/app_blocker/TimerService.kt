@@ -49,6 +49,7 @@ class TimerService : Service() {
     private var isTimerRunning = false
     private var midnightResetReceiverRegistered = false
     private var lastPersistedSecond: Long = -1
+    private var isPausedForScreenOff = false
 
     private val handler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
@@ -83,6 +84,7 @@ class TimerService : Service() {
 
         sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
         totalUsageToday = sharedPreferences.getLong("totalUsageToday", 0L)
+        isPausedForScreenOff = sharedPreferences.getBoolean(PREF_KEY_PAUSED_FOR_SCREEN_OFF, false)
         val transparency = sharedPreferences.getFloat("timerTransparency", 0.8f)
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -90,7 +92,7 @@ class TimerService : Service() {
         timerText = floatingView.findViewById(R.id.timerText)
         floatingView.alpha = transparency
 
-    startForeground(NOTIFICATION_ID, buildNotification())
+        startForeground(NOTIFICATION_ID, buildNotification())
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -157,13 +159,32 @@ class TimerService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("TimerService", "onStartCommand")
 
-        if (intent?.action == ACTION_MIDNIGHT_RESET) {
-            Log.d("TimerService", "Handling ACTION_MIDNIGHT_RESET")
-            performMidnightReset()
-            return START_STICKY
+        when (intent?.action) {
+            ACTION_MIDNIGHT_RESET -> {
+                Log.d("TimerService", "Handling ACTION_MIDNIGHT_RESET")
+                performMidnightReset()
+                return START_STICKY
+            }
+            ACTION_STOP_TIMER -> {
+                Log.d("TimerService", "Handling ACTION_STOP_TIMER")
+                stopTimer(saveProgress = true)
+                isPausedForScreenOff = true
+                sharedPreferences.edit().putBoolean(PREF_KEY_PAUSED_FOR_SCREEN_OFF, true).apply()
+                return START_STICKY
+            }
+            ACTION_RESUME_TIMER -> {
+                Log.d("TimerService", "Handling ACTION_RESUME_TIMER")
+                isPausedForScreenOff = false
+                sharedPreferences.edit().putBoolean(PREF_KEY_PAUSED_FOR_SCREEN_OFF, false).apply()
+            }
+            else -> {
+                // No special action; fall through to start logic below.
+            }
         }
 
-        startTimerIfNeeded()
+        if (!isPausedForScreenOff) {
+            startTimerIfNeeded()
+        }
 
         return START_STICKY
     }
@@ -265,6 +286,8 @@ class TimerService : Service() {
         isTimerRunning = true
         handler.removeCallbacks(timerRunnable)
         handler.post(timerRunnable)
+        isPausedForScreenOff = false
+    sharedPreferences.edit().putBoolean(PREF_KEY_PAUSED_FOR_SCREEN_OFF, false).apply()
     }
 
     private fun recordUsageForPreviousDay(durationMillis: Long) {
@@ -402,14 +425,24 @@ class TimerService : Service() {
 
     companion object {
         const val ACTION_MIDNIGHT_RESET = "com.example.app_blocker.timer.ACTION_MIDNIGHT_RESET"
+        const val ACTION_STOP_TIMER = "com.example.app_blocker.timer.ACTION_STOP"
+        const val ACTION_RESUME_TIMER = "com.example.app_blocker.timer.ACTION_RESUME"
         private const val RESTART_REQUEST_CODE = 1001
         private const val RESTART_DELAY_MS = 2_000L
         private const val NOTIFICATION_ID = 1337
         private const val NOTIFICATION_CHANNEL_ID = "timer_service_channel"
+        private const val PREF_KEY_PAUSED_FOR_SCREEN_OFF = "timerPausedForScreenOff"
 
         fun triggerMidnightReset(context: Context) {
             val intent = Intent(context, TimerService::class.java).apply {
                 action = ACTION_MIDNIGHT_RESET
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun requestStopTimer(context: Context) {
+            val intent = Intent(context, TimerService::class.java).apply {
+                action = ACTION_STOP_TIMER
             }
             ContextCompat.startForegroundService(context, intent)
         }
