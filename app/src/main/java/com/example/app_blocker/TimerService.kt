@@ -4,13 +4,11 @@ import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Context.RECEIVER_NOT_EXPORTED
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -21,6 +19,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import java.text.SimpleDateFormat
 import java.util.concurrent.TimeUnit
@@ -89,8 +89,17 @@ class TimerService : Service() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = sharedPreferences.getInt("timer_position_x", 0)
-        params.y = sharedPreferences.getInt("timer_position_y", 100)
+        val storedX = sharedPreferences.getInt("timer_position_x", 0)
+        val storedY = sharedPreferences.getInt("timer_position_y", 100)
+        params.x = storedX
+        params.y = storedY
+        clampPosition(params)
+        if (params.x != storedX || params.y != storedY) {
+            sharedPreferences.edit()
+                .putInt("timer_position_x", params.x)
+                .putInt("timer_position_y", params.y)
+                .apply()
+        }
 
         try {
             windowManager.addView(floatingView, params)
@@ -114,6 +123,7 @@ class TimerService : Service() {
                         return true
                     }
                     MotionEvent.ACTION_UP -> {
+                        clampPosition(params)
                         sharedPreferences.edit()
                             .putInt("timer_position_x", params.x)
                             .putInt("timer_position_y", params.y)
@@ -123,6 +133,7 @@ class TimerService : Service() {
                     MotionEvent.ACTION_MOVE -> {
                         params.x = initialX + (event.rawX - initialTouchX).toInt()
                         params.y = initialY + (event.rawY - initialTouchY).toInt()
+                        clampPosition(params)
                         windowManager.updateViewLayout(floatingView, params)
                         return true
                     }
@@ -296,12 +307,12 @@ class TimerService : Service() {
             return
         }
         val filter = IntentFilter(ACTION_MIDNIGHT_RESET)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(midnightResetReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(midnightResetReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this,
+            midnightResetReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         midnightResetReceiverRegistered = true
         Log.d("TimerService", "Midnight reset receiver registered")
     }
@@ -315,6 +326,46 @@ class TimerService : Service() {
             }
             context.startService(intent)
         }
+    }
+
+    private fun clampPosition(params: WindowManager.LayoutParams) {
+        val metrics = resources.displayMetrics
+        var viewWidth = when {
+            floatingView.width > 0 -> floatingView.width
+            floatingView.measuredWidth > 0 -> floatingView.measuredWidth
+            else -> 0
+        }
+        var viewHeight = when {
+            floatingView.height > 0 -> floatingView.height
+            floatingView.measuredHeight > 0 -> floatingView.measuredHeight
+            else -> 0
+        }
+
+        if (viewWidth <= 0 || viewHeight <= 0) {
+            floatingView.measure(
+                View.MeasureSpec.makeMeasureSpec(metrics.widthPixels, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(metrics.heightPixels, View.MeasureSpec.AT_MOST)
+            )
+            if (viewWidth <= 0) {
+                viewWidth = floatingView.measuredWidth
+            }
+            if (viewHeight <= 0) {
+                viewHeight = floatingView.measuredHeight
+            }
+        }
+
+        if (viewWidth <= 0) {
+            viewWidth = metrics.widthPixels / 2
+        }
+        if (viewHeight <= 0) {
+            viewHeight = metrics.heightPixels / 6
+        }
+
+        val maxX = (metrics.widthPixels - viewWidth).coerceAtLeast(0)
+        val maxY = (metrics.heightPixels - viewHeight).coerceAtLeast(0)
+
+        params.x = params.x.coerceIn(0, maxX)
+        params.y = params.y.coerceIn(0, maxY)
     }
 
 }

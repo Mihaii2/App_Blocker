@@ -29,4 +29,6 @@
     <string name="sleep_reminder_save_countdown_message">Hold tight. We will save the new schedule and size once the timer finishes so you do not bump this by accident.</string>
     <string name="sleep_reminder_saved_toast">Sleep reminder window updated.</string>
     <string name="sleep_reminder_text_saved_toast">Reminder text updated.</string>
+    <string name="sleep_reminder_hide_countdown_message">Hold tight. We will hide the reminder once the timer finishes so you do not dismiss it by accident.</string>
+    <string name="sleep_reminder_hidden_toast">Sleep reminder hidden. Start it again whenever you need it.</string>
 </resources>

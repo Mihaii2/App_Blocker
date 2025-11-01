@@ -7,7 +7,9 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -26,6 +28,13 @@ class SleepReminderService : Service() {
 
     private var viewAdded = false
     private var layoutParams: WindowManager.LayoutParams? = null
+    private val visibilityHandler = Handler(Looper.getMainLooper())
+    private val visibilityCheckRunnable = object : Runnable {
+        override fun run() {
+            updateVisibilityForCurrentWindow()
+            visibilityHandler.postDelayed(this, VISIBILITY_CHECK_INTERVAL_MS)
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -56,11 +65,16 @@ class SleepReminderService : Service() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = sharedPreferences.getInt(KEY_POSITION_X, 0)
-        params.y = sharedPreferences.getInt(KEY_POSITION_Y, 200)
+        val storedX = sharedPreferences.getInt(KEY_POSITION_X, 0)
+        val storedY = sharedPreferences.getInt(KEY_POSITION_Y, 200)
+        params.x = storedX
+        params.y = storedY
 
         adjustLayoutSize(params)
         clampPosition(params)
+        if (params.x != storedX || params.y != storedY) {
+            savePosition(params.x, params.y)
+        }
         layoutParams = params
 
         reminderView.setOnTouchListener(object : View.OnTouchListener {
@@ -80,6 +94,7 @@ class SleepReminderService : Service() {
                         return true
                     }
                     MotionEvent.ACTION_UP -> {
+                        clampPosition(currentParams)
                         savePosition(currentParams.x, currentParams.y)
                         return true
                     }
@@ -107,19 +122,15 @@ class SleepReminderService : Service() {
             clampPosition(it)
         }
 
-        // val shouldShowNow = isWithinConfiguredWindow()
-        // if (!shouldShowNow) {
-        //     removeViewIfNeeded()
-        //     return START_STICKY
-        // }
-
-        ensureViewAdded()
+        updateVisibilityForCurrentWindow()
+        scheduleVisibilityCheck()
 
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        visibilityHandler.removeCallbacksAndMessages(null)
         removeViewIfNeeded()
     }
 
@@ -177,7 +188,6 @@ class SleepReminderService : Service() {
             .apply()
     }
 
-    @Suppress("unused")
     private fun isWithinConfiguredWindow(): Boolean {
         val now = java.util.Calendar.getInstance()
         val currentMinutes = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)
@@ -213,6 +223,19 @@ class SleepReminderService : Service() {
         params.y = params.y.coerceIn(0, maxY)
     }
 
+    private fun scheduleVisibilityCheck() {
+        visibilityHandler.removeCallbacks(visibilityCheckRunnable)
+        visibilityHandler.postDelayed(visibilityCheckRunnable, VISIBILITY_CHECK_INTERVAL_MS)
+    }
+
+    private fun updateVisibilityForCurrentWindow() {
+        if (isWithinConfiguredWindow()) {
+            ensureViewAdded()
+        } else {
+            removeViewIfNeeded()
+        }
+    }
+
     companion object {
         const val KEY_TEXT = "sleepReminderText"
         const val KEY_START_MINUTES = "sleepReminderStartMinutes"
@@ -235,6 +258,7 @@ class SleepReminderService : Service() {
 
         private const val LEGACY_START_HOUR_KEY = "sleepReminderStartHour"
         private const val LEGACY_END_HOUR_KEY = "sleepReminderEndHour"
+        private const val VISIBILITY_CHECK_INTERVAL_MS = 60_000L
     }
 
     private fun migrateLegacyPreferencesIfNeeded() {

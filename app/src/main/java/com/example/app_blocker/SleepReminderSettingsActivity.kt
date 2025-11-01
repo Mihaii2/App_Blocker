@@ -35,7 +35,7 @@ class SleepReminderSettingsActivity : AppCompatActivity(), CountdownDialogFragme
     private var widthFraction: Float = SleepReminderService.DEFAULT_WIDTH_FRACTION
     private var heightFraction: Float = SleepReminderService.DEFAULT_HEIGHT_FRACTION
 
-    private var pendingSaveCountdown = false
+    private var pendingAction: PendingAction? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,7 +43,9 @@ class SleepReminderSettingsActivity : AppCompatActivity(), CountdownDialogFragme
 
         sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
 
-        pendingSaveCountdown = savedInstanceState?.getBoolean(STATE_PENDING_SAVE) ?: false
+        pendingAction = savedInstanceState?.getString(STATE_PENDING_ACTION)?.let { savedName ->
+            runCatching { PendingAction.valueOf(savedName) }.getOrNull()
+        }
 
         reminderTextInput = findViewById(R.id.sleepReminderTextInput)
         updateTextButton = findViewById(R.id.updateSleepReminderTextButton)
@@ -60,14 +62,17 @@ class SleepReminderSettingsActivity : AppCompatActivity(), CountdownDialogFragme
         loadCurrentValues()
         bindInteractions()
 
-        if (supportFragmentManager.findFragmentByTag(SAVE_DIALOG_TAG) != null) {
-            pendingSaveCountdown = true
+        val existingDialog = supportFragmentManager.findFragmentByTag(COUNTDOWN_DIALOG_TAG) as? CountdownDialogFragment
+        if (existingDialog != null && pendingAction == null) {
+            pendingAction = existingDialog.getActionTag()?.let { savedName ->
+                runCatching { PendingAction.valueOf(savedName) }.getOrNull()
+            }
         }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putBoolean(STATE_PENDING_SAVE, pendingSaveCountdown)
+        outState.putString(STATE_PENDING_ACTION, pendingAction?.name)
     }
 
     private fun loadCurrentValues() {
@@ -154,12 +159,11 @@ class SleepReminderSettingsActivity : AppCompatActivity(), CountdownDialogFragme
         })
 
         saveButton.setOnClickListener {
-            pendingSaveCountdown = true
-            val dialog = CountdownDialogFragment.newInstance(
-                getString(R.string.sleep_reminder_save_countdown_message),
-                getString(R.string.sleep_reminder_save_button)
+            showCountdownDialog(
+                R.string.sleep_reminder_save_countdown_message,
+                R.string.sleep_reminder_save_button,
+                PendingAction.SAVE
             )
-            dialog.show(supportFragmentManager, SAVE_DIALOG_TAG)
         }
 
         showButton.setOnClickListener {
@@ -167,7 +171,11 @@ class SleepReminderSettingsActivity : AppCompatActivity(), CountdownDialogFragme
         }
 
         hideButton.setOnClickListener {
-            stopService(Intent(this, SleepReminderService::class.java))
+            showCountdownDialog(
+                R.string.sleep_reminder_hide_countdown_message,
+                R.string.sleep_reminder_hide_button,
+                PendingAction.HIDE
+            )
         }
     }
 
@@ -215,18 +223,40 @@ class SleepReminderSettingsActivity : AppCompatActivity(), CountdownDialogFragme
     }
 
     override fun onDialogDismissed() {
-        pendingSaveCountdown = false
+        pendingAction = null
     }
 
     override fun onActionConfirmed() {
-        if (pendingSaveCountdown) {
-            pendingSaveCountdown = false
-            applyScheduleAndSizeSettings()
+        when (val action = pendingAction) {
+            PendingAction.SAVE -> applyScheduleAndSizeSettings()
+            PendingAction.HIDE -> hideSleepReminder()
+            null -> Unit
         }
+        pendingAction = null
     }
 
+    private fun hideSleepReminder() {
+        stopService(Intent(this, SleepReminderService::class.java))
+        Toast.makeText(this, R.string.sleep_reminder_hidden_toast, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showCountdownDialog(messageRes: Int, buttonTextRes: Int, action: PendingAction) {
+        if (supportFragmentManager.findFragmentByTag(COUNTDOWN_DIALOG_TAG) != null) {
+            return
+        }
+        pendingAction = action
+        val dialog = CountdownDialogFragment.newInstance(
+            getString(messageRes),
+            getString(buttonTextRes),
+            action.name
+        )
+        dialog.show(supportFragmentManager, COUNTDOWN_DIALOG_TAG)
+    }
+
+    private enum class PendingAction { SAVE, HIDE }
+
     companion object {
-        private const val STATE_PENDING_SAVE = "state_pending_save"
-        private const val SAVE_DIALOG_TAG = "SleepReminderSaveCountdown"
+        private const val STATE_PENDING_ACTION = "state_pending_action"
+        private const val COUNTDOWN_DIALOG_TAG = "SleepReminderCountdown"
     }
 }

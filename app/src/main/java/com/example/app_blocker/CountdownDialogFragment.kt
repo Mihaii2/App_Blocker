@@ -18,6 +18,7 @@ class CountdownDialogFragment : DialogFragment() {
     private var listener: CountdownDialogListener? = null
     private var countdownMessage: String? = null
     private var buttonText: String? = null
+    private var actionTag: String? = null
 
     interface CountdownDialogListener {
         fun onDialogDismissed()
@@ -27,12 +28,14 @@ class CountdownDialogFragment : DialogFragment() {
     companion object {
         private const val ARG_COUNTDOWN_MESSAGE = "countdown_message"
         private const val ARG_BUTTON_TEXT = "button_text"
+        private const val ARG_ACTION_TAG = "action_tag"
 
-        fun newInstance(countdownMessage: String, buttonText: String): CountdownDialogFragment {
+        fun newInstance(countdownMessage: String, buttonText: String, actionTag: String? = null): CountdownDialogFragment {
             val fragment = CountdownDialogFragment()
             val args = Bundle()
             args.putString(ARG_COUNTDOWN_MESSAGE, countdownMessage)
             args.putString(ARG_BUTTON_TEXT, buttonText)
+            args.putString(ARG_ACTION_TAG, actionTag)
             fragment.arguments = args
             return fragment
         }
@@ -48,6 +51,7 @@ class CountdownDialogFragment : DialogFragment() {
         arguments?.let {
             countdownMessage = it.getString(ARG_COUNTDOWN_MESSAGE)
             buttonText = it.getString(ARG_BUTTON_TEXT)
+            actionTag = it.getString(ARG_ACTION_TAG)
         }
     }
 
@@ -93,4 +97,6 @@ class CountdownDialogFragment : DialogFragment() {
         countdownTimer.cancel()
         listener?.onDialogDismissed()
     }
+
+    fun getActionTag(): String? = actionTag
 }
