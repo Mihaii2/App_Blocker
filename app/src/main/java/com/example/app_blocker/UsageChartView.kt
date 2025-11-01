@@ -28,13 +28,13 @@ class UsageChartView @JvmOverloads constructor(
     }
 
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.DKGRAY
+        color = Color.WHITE
         textSize = sp(12f)
         textAlign = Paint.Align.CENTER
     }
 
     private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.DKGRAY
+        color = Color.WHITE
         textSize = sp(11f)
         textAlign = Paint.Align.CENTER
     }
