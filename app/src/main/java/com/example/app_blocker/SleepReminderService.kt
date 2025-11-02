@@ -1,6 +1,11 @@
 package com.example.app_blocker
 
 import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -10,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -18,6 +24,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.TextView
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import java.util.Calendar
 
 class SleepReminderService : Service() {
 
@@ -32,7 +41,7 @@ class SleepReminderService : Service() {
     private val visibilityCheckRunnable = object : Runnable {
         override fun run() {
             updateVisibilityForCurrentWindow()
-            visibilityHandler.postDelayed(this, VISIBILITY_CHECK_INTERVAL_MS)
+            scheduleVisibilityCheck()
         }
     }
 
@@ -45,6 +54,8 @@ class SleepReminderService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         migrateLegacyPreferencesIfNeeded()
+
+        startForeground(NOTIFICATION_ID, buildNotification())
 
         reminderView = LayoutInflater.from(this).inflate(R.layout.floating_sleep_reminder_layout, null)
         reminderText = reminderView.findViewById(R.id.sleepReminderText)
@@ -132,6 +143,7 @@ class SleepReminderService : Service() {
         super.onDestroy()
         visibilityHandler.removeCallbacksAndMessages(null)
         removeViewIfNeeded()
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun ensureViewAdded() {
@@ -189,11 +201,45 @@ class SleepReminderService : Service() {
     }
 
     private fun isWithinConfiguredWindow(): Boolean {
-        val now = java.util.Calendar.getInstance()
-        val currentMinutes = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)
+        val startMinutes = sharedPreferences.getInt(KEY_START_MINUTES, DEFAULT_START_MINUTES)
+        val endMinutes = sharedPreferences.getInt(KEY_END_MINUTES, DEFAULT_END_MINUTES)
+        val currentMinutes = currentMinutesOfDay()
+        return isWithinWindow(currentMinutes, startMinutes, endMinutes)
+    }
+
+    private fun calculateNextBoundaryWallClockMillis(): Long? {
         val startMinutes = sharedPreferences.getInt(KEY_START_MINUTES, DEFAULT_START_MINUTES)
         val endMinutes = sharedPreferences.getInt(KEY_END_MINUTES, DEFAULT_END_MINUTES)
 
+        if (startMinutes == endMinutes) {
+            return null
+        }
+
+        val now = Calendar.getInstance()
+        val currentMinutes = currentMinutesOfDay(now)
+        val withinWindow = isWithinWindow(currentMinutes, startMinutes, endMinutes)
+        val targetMinutes = if (withinWindow) endMinutes else startMinutes
+
+        val target = (now.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, (targetMinutes / 60) % 24)
+            set(Calendar.MINUTE, targetMinutes % 60)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            if (timeInMillis <= now.timeInMillis) {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+        }
+        return target.timeInMillis
+    }
+
+    private fun currentMinutesOfDay(calendar: Calendar = Calendar.getInstance()): Int {
+        return calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+    }
+
+    private fun isWithinWindow(currentMinutes: Int, startMinutes: Int, endMinutes: Int): Boolean {
+        if (startMinutes == endMinutes) {
+            return true
+        }
         return if (startMinutes <= endMinutes) {
             currentMinutes in startMinutes until endMinutes
         } else {
@@ -225,7 +271,20 @@ class SleepReminderService : Service() {
 
     private fun scheduleVisibilityCheck() {
         visibilityHandler.removeCallbacks(visibilityCheckRunnable)
-        visibilityHandler.postDelayed(visibilityCheckRunnable, VISIBILITY_CHECK_INTERVAL_MS)
+        val delay = computeNextVisibilityCheckDelay()
+        visibilityHandler.postDelayed(visibilityCheckRunnable, delay)
+    }
+
+    private fun computeNextVisibilityCheckDelay(): Long {
+        val now = System.currentTimeMillis()
+        val nextBoundaryMillis = calculateNextBoundaryWallClockMillis()
+        val baseAligned = ((now / BASE_VISIBILITY_CHECK_INTERVAL_MS) + 1) * BASE_VISIBILITY_CHECK_INTERVAL_MS
+        val target = when {
+            nextBoundaryMillis != null -> minOf(nextBoundaryMillis, baseAligned)
+            else -> baseAligned
+        }
+        val rawDelay = target - now
+        return rawDelay.coerceIn(MIN_VISIBILITY_CHECK_DELAY_MS, MAX_VISIBILITY_CHECK_DELAY_MS)
     }
 
     private fun updateVisibilityForCurrentWindow() {
@@ -234,6 +293,68 @@ class SleepReminderService : Service() {
         } else {
             removeViewIfNeeded()
         }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        scheduleServiceRestart()
+    }
+
+    private fun scheduleServiceRestart() {
+        val restartIntent = Intent(applicationContext, SleepReminderService::class.java)
+        runCatching {
+            ContextCompat.startForegroundService(applicationContext, restartIntent)
+        }.onFailure { error ->
+            Log.w("SleepReminderService", "Immediate restart attempt failed; will rely on alarm", error)
+        }
+
+        val pendingIntent = PendingIntent.getService(
+            applicationContext,
+            RESTART_REQUEST_CODE,
+            restartIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT
+        )
+
+        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+        val triggerAt = SystemClock.elapsedRealtime() + RESTART_DELAY_MS
+        runCatching {
+            alarmManager?.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pendingIntent)
+        }.onFailure { error ->
+            Log.e("SleepReminderService", "Failed to schedule reminder restart", error)
+        }
+    }
+
+    private fun buildNotification(): Notification {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                getString(R.string.sleep_reminder_channel_name),
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                description = getString(R.string.sleep_reminder_channel_description)
+                setShowBadge(false)
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+
+        val openIntent = Intent(this, SleepReminderSettingsActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(getString(R.string.sleep_reminder_notification_title))
+            .setContentText(getString(R.string.sleep_reminder_notification_text))
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .build()
     }
 
     companion object {
@@ -253,12 +374,18 @@ class SleepReminderService : Service() {
 
         fun requestRefresh(context: Context) {
             val intent = Intent(context, SleepReminderService::class.java)
-            context.startService(intent)
+            ContextCompat.startForegroundService(context, intent)
         }
 
         private const val LEGACY_START_HOUR_KEY = "sleepReminderStartHour"
         private const val LEGACY_END_HOUR_KEY = "sleepReminderEndHour"
-        private const val VISIBILITY_CHECK_INTERVAL_MS = 60_000L
+        private const val BASE_VISIBILITY_CHECK_INTERVAL_MS = 15_000L
+        private const val MIN_VISIBILITY_CHECK_DELAY_MS = 3_000L
+        private const val MAX_VISIBILITY_CHECK_DELAY_MS = 60_000L
+        private const val RESTART_REQUEST_CODE = 2001
+        private const val RESTART_DELAY_MS = 2_000L
+        private const val NOTIFICATION_ID = 1440
+        private const val NOTIFICATION_CHANNEL_ID = "sleep_reminder_channel"
     }
 
     private fun migrateLegacyPreferencesIfNeeded() {

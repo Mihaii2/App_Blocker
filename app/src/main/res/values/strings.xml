@@ -31,6 +31,10 @@
     <string name="sleep_reminder_text_saved_toast">Reminder text updated.</string>
     <string name="sleep_reminder_hide_countdown_message">Hold tight. We will hide the reminder once the timer finishes so you do not dismiss it by accident.</string>
     <string name="sleep_reminder_hidden_toast">Sleep reminder hidden. Start it again whenever you need it.</string>
+    <string name="sleep_reminder_channel_name">Sleep Reminder</string>
+    <string name="sleep_reminder_channel_description">Shows the floating sleep reminder window.</string>
+    <string name="sleep_reminder_notification_title">Sleep reminder is monitoring</string>
+    <string name="sleep_reminder_notification_text">We will pop up when your quiet hours begin.</string>
     <string name="timer_service_channel_name">Usage Timer</string>
     <string name="timer_service_channel_description">Shows the always-on daily usage timer.</string>
     <string name="timer_service_notification_title">Daily usage timer running</string>
