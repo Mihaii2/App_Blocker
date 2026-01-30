@@ -51,6 +51,9 @@ class ScreenTimeTrackerService : Service() {
             receiverRegistered = true
         }
 
+        // Ensure heartbeat is scheduled to keep services alive
+        ServiceHeartbeatReceiver.scheduleHeartbeat(this)
+
         if (shouldResumeTimerNow()) {
             val intent = Intent(this, TimerService::class.java).apply {
                 action = TimerService.ACTION_RESUME_TIMER

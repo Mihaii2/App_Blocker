@@ -125,6 +125,9 @@ class SleepReminderService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("SleepReminderService", "onStartCommand: ${intent?.action}")
 
+        // Ensure heartbeat is scheduled to keep services alive
+        ServiceHeartbeatReceiver.scheduleHeartbeat(this)
+
         val text = sharedPreferences.getString(KEY_TEXT, DEFAULT_TEXT) ?: DEFAULT_TEXT
         reminderText.text = text
 

@@ -24,7 +24,7 @@
     <string name="sleep_reminder_width_value">Width: %1$d%%</string>
     <string name="sleep_reminder_height_value">Height: %1$d%%</string>
     <string name="sleep_reminder_save_button">Save Schedule &amp; Size</string>
-    <string name="sleep_reminder_show_button">Show Reminder</string>
+    <string name="sleep_reminder_show_button">Start Reminder Service</string>
     <string name="sleep_reminder_hide_button">Hide Reminder</string>
     <string name="sleep_reminder_save_countdown_message">Hold tight. We will save the new schedule and size once the timer finishes so you do not bump this by accident.</string>
     <string name="sleep_reminder_saved_toast">Sleep reminder window updated.</string>

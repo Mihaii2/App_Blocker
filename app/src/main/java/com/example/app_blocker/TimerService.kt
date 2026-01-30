@@ -32,7 +32,9 @@ import androidx.core.graphics.drawable.DrawableCompat
 import java.text.SimpleDateFormat
 import java.util.concurrent.TimeUnit
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -50,10 +52,17 @@ class TimerService : Service() {
     private var midnightResetReceiverRegistered = false
     private var lastPersistedSecond: Long = -1
     private var isPausedForScreenOff = false
+    private var lastResetDate: String = ""
+    private val dayFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     private val handler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
         override fun run() {
+            if (!isTimerRunning) {
+                return
+            }
+
+            ensureDateConsistency()
             if (!isTimerRunning) {
                 return
             }
@@ -85,6 +94,13 @@ class TimerService : Service() {
         sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
         totalUsageToday = sharedPreferences.getLong("totalUsageToday", 0L)
         isPausedForScreenOff = sharedPreferences.getBoolean(PREF_KEY_PAUSED_FOR_SCREEN_OFF, false)
+        val today = currentDateString()
+        val hasStoredResetDate = sharedPreferences.contains(PREF_KEY_LAST_RESET_DATE)
+        lastResetDate = sharedPreferences.getString(PREF_KEY_LAST_RESET_DATE, today) ?: today
+        if (!hasStoredResetDate) {
+            sharedPreferences.edit().putString(PREF_KEY_LAST_RESET_DATE, lastResetDate).apply()
+        }
+        val needsInitialReset = lastResetDate != today
         val transparency = sharedPreferences.getFloat("timerTransparency", 0.8f)
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -118,6 +134,14 @@ class TimerService : Service() {
             windowManager.addView(floatingView, params)
         } catch (e: Exception) {
             Log.e("TimerService", "Error adding view to window manager", e)
+        }
+
+        if (needsInitialReset) {
+            Log.d("TimerService", "Date mismatch on create; forcing midnight reset")
+            performMidnightReset()
+        } else {
+            updateTimerDisplay(totalUsageToday)
+            scheduleAutoResetAlarm()
         }
 
         floatingView.setOnTouchListener(object : View.OnTouchListener {
@@ -159,11 +183,18 @@ class TimerService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("TimerService", "onStartCommand")
 
+        var actionHandled = false
         when (intent?.action) {
             ACTION_MIDNIGHT_RESET -> {
-                Log.d("TimerService", "Handling ACTION_MIDNIGHT_RESET")
-                performMidnightReset()
-                return START_STICKY
+                val today = currentDateString()
+                if (lastResetDate == today) {
+                    Log.d("TimerService", "Handling ACTION_MIDNIGHT_RESET but already reset for today; scheduling next alarm")
+                    scheduleAutoResetAlarm()
+                } else {
+                    Log.d("TimerService", "Handling ACTION_MIDNIGHT_RESET")
+                    performMidnightReset()
+                }
+                actionHandled = true
             }
             ACTION_STOP_TIMER -> {
                 Log.d("TimerService", "Handling ACTION_STOP_TIMER")
@@ -180,6 +211,10 @@ class TimerService : Service() {
             else -> {
                 // No special action; fall through to start logic below.
             }
+        }
+
+        if (!actionHandled) {
+            ensureDateConsistency()
         }
 
         if (!isPausedForScreenOff) {
@@ -230,6 +265,7 @@ class TimerService : Service() {
             unregisterReceiver(midnightResetReceiver)
             midnightResetReceiverRegistered = false
         }
+        cancelAutoResetAlarm()
     }
 
     private fun startTimerIfNeeded() {
@@ -275,6 +311,7 @@ class TimerService : Service() {
 
     private fun performMidnightReset() {
         Log.d("TimerService", "performMidnightReset invoked")
+        val shouldResumeAfterReset = !isPausedForScreenOff
         stopTimer(saveProgress = false)
         val previousDayUsage = totalUsageToday
         recordUsageForPreviousDay(previousDayUsage)
@@ -282,18 +319,24 @@ class TimerService : Service() {
         sharedPreferences.edit().putLong("totalUsageToday", totalUsageToday).apply()
         lastPersistedSecond = TimeUnit.MILLISECONDS.toSeconds(totalUsageToday)
         updateTimerDisplay(totalUsageToday)
-        sessionStartTime = System.currentTimeMillis()
-        isTimerRunning = true
         handler.removeCallbacks(timerRunnable)
-        handler.post(timerRunnable)
-        isPausedForScreenOff = false
-    sharedPreferences.edit().putBoolean(PREF_KEY_PAUSED_FOR_SCREEN_OFF, false).apply()
+        if (shouldResumeAfterReset) {
+            sessionStartTime = System.currentTimeMillis()
+            isTimerRunning = true
+            handler.post(timerRunnable)
+        } else {
+            isTimerRunning = false
+            sharedPreferences.edit().putBoolean(PREF_KEY_PAUSED_FOR_SCREEN_OFF, true).apply()
+        }
+        lastResetDate = currentDateString()
+        sharedPreferences.edit().putString(PREF_KEY_LAST_RESET_DATE, lastResetDate).apply()
+        scheduleAutoResetAlarm()
     }
 
     private fun recordUsageForPreviousDay(durationMillis: Long) {
         val calendar = Calendar.getInstance()
         calendar.add(Calendar.DAY_OF_YEAR, -1)
-        val dateKey = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
+    val dateKey = formatDate(calendar.time)
 
         val historyString = sharedPreferences.getString("usageHistory", "[]")
         val historyArray = try {
@@ -382,6 +425,80 @@ class TimerService : Service() {
         }
     }
 
+    private fun ensureDateConsistency() {
+        val today = currentDateString()
+        if (lastResetDate != today) {
+            Log.d("TimerService", "Detected day rollover (last=$lastResetDate, today=$today); performing reset")
+            performMidnightReset()
+        }
+    }
+
+    private fun scheduleAutoResetAlarm() {
+        cancelAutoResetAlarm()
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val intent = Intent(this, TimerService::class.java).apply {
+            action = ACTION_MIDNIGHT_RESET
+        }
+        val pendingIntent = PendingIntent.getService(
+            this,
+            RESET_ALARM_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT
+        )
+        val triggerAt = computeNextResetTriggerMillis()
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            }
+            Log.d("TimerService", "Scheduled auto reset alarm for ${Date(triggerAt)}")
+        }.onFailure { error ->
+            Log.e("TimerService", "Failed to schedule auto reset alarm", error)
+            runCatching {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                Log.d("TimerService", "Scheduled inexact fallback alarm for ${Date(triggerAt)}")
+            }.onFailure { fallbackError ->
+                Log.e("TimerService", "Fallback auto reset alarm scheduling also failed", fallbackError)
+            }
+        }
+    }
+
+    private fun cancelAutoResetAlarm() {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val pendingIntent = PendingIntent.getService(
+            this,
+            RESET_ALARM_REQUEST_CODE,
+            Intent(this, TimerService::class.java).apply { action = ACTION_MIDNIGHT_RESET },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+        )
+        if (pendingIntent != null) {
+            alarmManager.cancel(pendingIntent)
+            pendingIntent.cancel()
+        }
+    }
+
+    private fun computeNextResetTriggerMillis(): Long {
+        val calendar = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 0)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, RESET_GRACE_PERIOD_MINUTES)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            if (timeInMillis <= System.currentTimeMillis()) {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+        }
+        return calendar.timeInMillis
+    }
+
+    private fun currentDateString(): String = formatDate(Date())
+
+    private fun formatDate(date: Date): String = synchronized(dayFormatter) {
+        dayFormatter.timeZone = TimeZone.getDefault()
+        dayFormatter.format(date)
+    }
+
     private fun persistUsageProgressIfNeeded(currentTotal: Long) {
         val currentSecond = TimeUnit.MILLISECONDS.toSeconds(currentTotal)
         if (currentSecond != lastPersistedSecond) {
@@ -432,6 +549,9 @@ class TimerService : Service() {
         private const val NOTIFICATION_ID = 1337
         private const val NOTIFICATION_CHANNEL_ID = "timer_service_channel"
         private const val PREF_KEY_PAUSED_FOR_SCREEN_OFF = "timerPausedForScreenOff"
+    private const val PREF_KEY_LAST_RESET_DATE = "timerLastResetDate"
+    private const val RESET_ALARM_REQUEST_CODE = 1101
+    private const val RESET_GRACE_PERIOD_MINUTES = 2
 
         fun triggerMidnightReset(context: Context) {
             val intent = Intent(context, TimerService::class.java).apply {

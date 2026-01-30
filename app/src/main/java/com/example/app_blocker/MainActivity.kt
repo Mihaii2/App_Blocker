@@ -95,6 +95,8 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
         findViewById<Button>(R.id.startTrackingButton).setOnClickListener {
             val intent = Intent(this, ScreenTimeTrackerService::class.java)
             startService(intent)
+            // Trigger immediate heartbeat and schedule periodic restarts
+            ServiceHeartbeatReceiver.triggerImmediateHeartbeat(this)
         }
 
         findViewById<Button>(R.id.historyButton).setOnClickListener {
@@ -113,6 +115,13 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
     private fun restartTimerService() {
         stopService(Intent(this, TimerService::class.java))
         ContextCompat.startForegroundService(this, Intent(this, TimerService::class.java))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Trigger immediate heartbeat to start services and schedule periodic restarts
+        // This ensures services start automatically when the app is opened (including first install)
+        ServiceHeartbeatReceiver.triggerImmediateHeartbeat(this)
     }
 
     override fun onPause() {
