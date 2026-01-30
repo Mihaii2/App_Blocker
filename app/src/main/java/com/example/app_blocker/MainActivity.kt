@@ -107,6 +107,10 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
             startActivity(Intent(this, SleepReminderSettingsActivity::class.java))
         }
 
+        findViewById<Button>(R.id.wakeUpReminderSettingsButton).setOnClickListener {
+            startActivity(Intent(this, WakeUpReminderSettingsActivity::class.java))
+        }
+
         requestIgnoreBatteryOptimizations()
         checkOverlayPermission()
         scheduleMidnightReset()

@@ -41,6 +41,17 @@ class ServiceHeartbeatReceiver : BroadcastReceiver() {
             Log.e(TAG, "Failed to restart SleepReminderService", e)
         }
 
+        // Restart WakeUpReminderService
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
+                val wakeUpIntent = Intent(context, WakeUpReminderService::class.java)
+                ContextCompat.startForegroundService(context, wakeUpIntent)
+                Log.d(TAG, "WakeUpReminderService restart requested")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to restart WakeUpReminderService", e)
+        }
+
         // Schedule the next heartbeat
         scheduleHeartbeat(context)
     }
@@ -154,6 +165,16 @@ class ServiceHeartbeatReceiver : BroadcastReceiver() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start SleepReminderService", e)
+            }
+
+            // Restart WakeUpReminderService
+            try {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
+                    val wakeUpIntent = Intent(context, WakeUpReminderService::class.java)
+                    ContextCompat.startForegroundService(context, wakeUpIntent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start WakeUpReminderService", e)
             }
 
             // Schedule next heartbeat

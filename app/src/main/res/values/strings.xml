@@ -39,4 +39,28 @@
     <string name="timer_service_channel_description">Shows the always-on daily usage timer.</string>
     <string name="timer_service_notification_title">Daily usage timer running</string>
     <string name="timer_service_notification_text">Tap to open App Blocker.</string>
+
+    <!-- Wake Up Reminder -->
+    <string name="wake_up_reminder_label">Wake Up Reminder</string>
+    <string name="wake_up_reminder_open_settings">Wake Up Reminder Settings</string>
+    <string name="wake_up_reminder_settings_title">Wake Up Reminder Settings</string>
+    <string name="wake_up_reminder_text_hint">Reminder text</string>
+    <string name="wake_up_reminder_update_text_button">Update Text</string>
+    <string name="wake_up_reminder_start_button">Start Time</string>
+    <string name="wake_up_reminder_end_button">End Time</string>
+    <string name="wake_up_reminder_window_size_header">Window Size</string>
+    <string name="wake_up_reminder_width_value">Width: %1$d%%</string>
+    <string name="wake_up_reminder_height_value">Height: %1$d%%</string>
+    <string name="wake_up_reminder_save_button">Save Schedule &amp; Size</string>
+    <string name="wake_up_reminder_show_button">Start Reminder Service</string>
+    <string name="wake_up_reminder_hide_button">Hide Reminder</string>
+    <string name="wake_up_reminder_save_countdown_message">Hold tight. We will save the new schedule and size once the timer finishes so you do not bump this by accident.</string>
+    <string name="wake_up_reminder_saved_toast">Wake up reminder window updated.</string>
+    <string name="wake_up_reminder_text_saved_toast">Reminder text updated.</string>
+    <string name="wake_up_reminder_hide_countdown_message">Hold tight. We will hide the reminder once the timer finishes so you do not dismiss it by accident.</string>
+    <string name="wake_up_reminder_hidden_toast">Wake up reminder hidden. Start it again whenever you need it.</string>
+    <string name="wake_up_reminder_channel_name">Wake Up Reminder</string>
+    <string name="wake_up_reminder_channel_description">Shows the floating wake up reminder window.</string>
+    <string name="wake_up_reminder_notification_title">Wake up reminder is monitoring</string>
+    <string name="wake_up_reminder_notification_text">We will pop up during your morning hours.</string>
 </resources>

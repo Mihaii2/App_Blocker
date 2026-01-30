@@ -44,6 +44,10 @@
             android:name=".SleepReminderSettingsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".WakeUpReminderSettingsActivity"
+            android:exported="false" />
+
         <service
             android:name=".TimerService"
             android:enabled="true"
@@ -85,6 +89,16 @@
 
         <service
             android:name=".SleepReminderService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="explanation_for_special_use" />
+        </service>
+
+        <service
+            android:name=".WakeUpReminderService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
