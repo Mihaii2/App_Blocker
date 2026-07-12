@@ -35,7 +35,6 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: Received start command.")
         return START_STICKY
     }
 
@@ -50,22 +49,23 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         }
 
         val rootNode = rootInActiveWindow ?: return
+        val activePackage = rootNode.packageName?.toString()?.trim()?.lowercase() ?: return
 
-        // Ignore events from our own app
-        if (rootNode.packageName != null && rootNode.packageName.toString() == applicationContext.packageName) {
+        // Ignore events from our own configuration dashboard screen
+        if (activePackage == applicationContext.packageName) {
             rootNode.recycle()
             return
         }
 
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastCheckTime < 500) { // Debounce check
+        if (currentTime - lastCheckTime < 400) { // Fluid debounce buffer protection
             rootNode.recycle()
             return
         }
         lastCheckTime = currentTime
 
         executor.execute {
-            if (checkForKeywords(rootNode)) {
+            if (checkForTargetedKeywords(rootNode, activePackage)) {
                 handler.postDelayed({
                     performGlobalAction(GLOBAL_ACTION_BACK)
                 }, blockingDelay.toLong())
@@ -74,49 +74,65 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         }
     }
 
-    private fun checkForKeywords(rootNode: AccessibilityNodeInfo): Boolean {
-        val queue: Queue<AccessibilityNodeInfo> = LinkedList()
-        queue.add(rootNode)
-        val visitedNodes = HashSet<AccessibilityNodeInfo>()
+    private fun checkForTargetedKeywords(rootNode: AccessibilityNodeInfo, activePackage: String): Boolean {
+        // 1. Gather all active layout strings and descriptions into lowercase
+        val screenTexts = mutableListOf<String>()
+        extractAllScreenText(rootNode, screenTexts)
 
-        while (queue.isNotEmpty()) {
-            val node = queue.poll() ?: continue
+        if (screenTexts.isEmpty()) return false
 
-            if (!visitedNodes.add(node)) {
-                continue
-            }
+        // 2. Safely cycle through saved rules to find a contextual target match
+        for (rule in keywords) {
+            if (!rule.contains(":")) continue
 
-            val text = node.text?.toString()
-            val description = node.contentDescription?.toString()
+            val parts = rule.split(":")
+            if (parts.size < 2) continue
 
-            if (text != null && keywords.any { text.contains(it, ignoreCase = true) }) {
-                Log.d(TAG, "checkForKeywords: Found keyword in text: '$text'")
-                return true
-            }
+            val rulePackage = parts[0].trim().lowercase()
+            val phrasesString = parts[1].trim().lowercase()
 
-            if (description != null && keywords.any { description.contains(it, ignoreCase = true) }) {
-                Log.d(TAG, "checkForKeywords: Found keyword in description: '$description'")
-                return true
-            }
+            // Conditional Target Match: Package matches exactly OR rule is a global wildcard '*'
+            if (rulePackage == "*" || rulePackage == activePackage) {
+                val triggerPhrases = phrasesString.split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
 
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i)
-                if (child != null) {
-                    queue.add(child)
+                if (triggerPhrases.isEmpty()) continue
+
+                // Check if every single multi-phrase item in this rule line exists concurrently
+                val allPhrasesMatch = triggerPhrases.all { phrase ->
+                    screenTexts.any { screenText -> screenText.contains(phrase) }
+                }
+
+                if (allPhrasesMatch) {
+                    Log.d(TAG, "checkForTargetedKeywords: Target matched app [$rulePackage]. Core phrases triggered block.")
+                    return true
                 }
             }
         }
         return false
     }
 
+    private fun extractAllScreenText(node: AccessibilityNodeInfo?, textList: MutableList<String>) {
+        if (node == null) return
 
-    override fun onInterrupt() {
-        Log.d(TAG, "onInterrupt: Service has been interrupted.")
-        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
+        node.text?.toString()?.trim()?.lowercase()?.let {
+            if (it.isNotEmpty()) textList.add(it)
+        }
+        node.contentDescription?.toString()?.trim()?.lowercase()?.let {
+            if (it.isNotEmpty()) textList.add(it)
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            extractAllScreenText(child, textList)
+            child?.recycle()
+        }
     }
 
+    override fun onInterrupt() {}
+
     override fun onUnbind(intent: Intent?): Boolean {
-        Log.d(TAG, "onUnbind: Service has been unbound.")
         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
         return super.onUnbind(intent)
     }
@@ -125,15 +141,12 @@ class BlockerService : AccessibilityService(), SharedPreferences.OnSharedPrefere
         when (key) {
             "keywords" -> {
                 keywords = sharedPreferences?.getStringSet("keywords", setOf()) ?: setOf()
-                Log.d(TAG, "onSharedPreferenceChanged: Keywords updated.")
             }
             "blockingEnabled" -> {
                 blockingEnabled = sharedPreferences?.getBoolean("blockingEnabled", true) ?: true
-                Log.d(TAG, "onSharedPreferenceChanged: Blocking enabled updated to: $blockingEnabled")
             }
             "blockingDelay" -> {
                 blockingDelay = sharedPreferences?.getInt("blockingDelay", 500) ?: 500
-                Log.d(TAG, "onSharedPreferenceChanged: Blocking delay updated to: $blockingDelay")
             }
         }
     }
