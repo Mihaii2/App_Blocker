@@ -1,133 +1,120 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#121212"
+    android:fillViewport="true"
     tools:context=".MainActivity">
 
-    <Button
-        android:id="@+id/manageKeywordsButton"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Manage Keywords"
-        app:layout_constraintBottom_toTopOf="@+id/enableServiceButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_chainStyle="packed" />
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <Button
-        android:id="@+id/enableServiceButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Enable Accessibility Service"
-        app:layout_constraintBottom_toTopOf="@+id/enableAutostartButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/manageKeywordsButton" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="Focus &amp; App Blocker"
+            android:textColor="#FFFFFF"
+            android:textSize="26sp"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/enableAutostartButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Enable Autostart"
-        app:layout_constraintBottom_toTopOf="@+id/startTrackingButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/enableServiceButton" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/blockingSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="Enable Keyword Blocking Protection"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
 
-    <Button
-        android:id="@+id/startTrackingButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Start Tracking Service"
-        app:layout_constraintBottom_toTopOf="@+id/historyButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/enableAutostartButton" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-    <Button
-        android:id="@+id/historyButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/button_usage_history"
-        app:layout_constraintBottom_toTopOf="@+id/blockingSwitch"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/startTrackingButton" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Kickout Delay (ms):"
+                android:textColor="#BBBBBB"
+                android:textSize="14sp" />
 
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/blockingSwitch"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Blocking Enabled"
-        app:layout_constraintBottom_toTopOf="@+id/delayInput"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/historyButton" />
+            <EditText
+                android:id="@+id/delayInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:hint="500"
+                android:textColorHint="#555555"
+                android:textColor="#FFFFFF"
+                android:inputType="number"
+                android:minHeight="48dp" />
+        </LinearLayout>
 
-    <EditText
-        android:id="@+id/delayInput"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:ems="10"
-        android:hint="Exit Delay (milliseconds)"
-        android:inputType="number"
-        android:minHeight="48dp"
-        app:layout_constraintBottom_toTopOf="@+id/transparencyLabel"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/blockingSwitch" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Timer Float Transparency"
+            android:textColor="#BBBBBB"
+            android:textSize="14sp" />
 
-    <TextView
-        android:id="@+id/transparencyLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Timer Transparency"
-        app:layout_constraintBottom_toTopOf="@+id/transparencySeekBar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/delayInput" />
+        <SeekBar
+            android:id="@+id/transparencySeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:max="100"
+            android:progress="80" />
 
-    <SeekBar
-        android:id="@+id/transparencySeekBar"
-        android:layout_width="200dp"
-        android:layout_height="wrap_content"
-        android:max="100"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/transparencyLabel"
-        app:layout_constraintBottom_toTopOf="@+id/sleepReminderSettingsButton" />
+        <Button
+            android:id="@+id/manageKeywordsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="36dp"
+            android:text="Configure Rules &amp; Keywords" />
 
-    <Button
-        android:id="@+id/sleepReminderSettingsButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/sleep_reminder_open_settings"
-        app:layout_constraintBottom_toTopOf="@+id/wakeUpReminderSettingsButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/transparencySeekBar" />
+        <Button
+            android:id="@+id/waterSettingsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Configure Water Reminders" />
 
-    <Button
-        android:id="@+id/wakeUpReminderSettingsButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/wake_up_reminder_open_settings"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/sleepReminderSettingsButton" />
+        <Button
+            android:id="@+id/historyButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="View Usage History Metrics" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <Button
+            android:id="@+id/enableServiceButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Open System Accessibility Settings" />
+
+        <Button
+            android:id="@+id/startTrackingButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Initialize Tracking Core" />
+
+        <Button
+            android:id="@+id/enableAutostartButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Configure System Autostart" />
+
+    </LinearLayout>
+</ScrollView>

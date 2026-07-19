@@ -3,17 +3,15 @@ package com.example.app_blocker
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.graphics.Color
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.Spinner
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import org.json.JSONArray
 
 class HistoryActivity : AppCompatActivity() {
@@ -22,8 +20,15 @@ class HistoryActivity : AppCompatActivity() {
 
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var chartView: UsageChartView
-    private lateinit var modeSpinner: Spinner
-    private lateinit var summaryText: TextView
+
+    // UI Binds
+    private lateinit var btnDailyMode: TextView
+    private lateinit var btnWeeklyMode: TextView
+    private lateinit var rangeSeekBar: SeekBar
+    private lateinit var rangeValueLabel: TextView
+
+    private var currentMode = HistoryMode.DAILY
+    private var currentDisplayLimit = 180
 
     private val storageDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private val displayDateFormat = SimpleDateFormat("MM-dd", Locale.US)
@@ -34,53 +39,75 @@ class HistoryActivity : AppCompatActivity() {
 
         sharedPreferences = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
         chartView = findViewById(R.id.usageChartView)
-        modeSpinner = findViewById(R.id.modeSpinner)
-        summaryText = findViewById(R.id.summaryText)
+        btnDailyMode = findViewById(R.id.btnDailyMode)
+        btnWeeklyMode = findViewById(R.id.btnWeeklyMode)
+        rangeSeekBar = findViewById(R.id.rangeSeekBar)
+        rangeValueLabel = findViewById(R.id.rangeValueLabel)
 
-        val adapter = ArrayAdapter.createFromResource(
-            this,
-            R.array.history_timeframes,
-            android.R.layout.simple_spinner_item
-        )
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        modeSpinner.adapter = adapter
-
-        modeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                val mode = if (position == 1) HistoryMode.WEEKLY else HistoryMode.DAILY
-                updateChart(mode)
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>) {
-                updateChart(HistoryMode.DAILY)
+        // Click logic for the compact [ D ] button
+        btnDailyMode.setOnClickListener {
+            if (currentMode != HistoryMode.DAILY) {
+                currentMode = HistoryMode.DAILY
+                toggleButtonStyles()
+                updateRangeLabel()
+                updateChart()
             }
         }
 
-        modeSpinner.setSelection(0)
-        updateChart(HistoryMode.DAILY)
+        // Click logic for the compact [ W ] button
+        btnWeeklyMode.setOnClickListener {
+            if (currentMode != HistoryMode.WEEKLY) {
+                currentMode = HistoryMode.WEEKLY
+                toggleButtonStyles()
+                updateRangeLabel()
+                updateChart()
+            }
+        }
+
+        // Draggable slider bar adjustment handling logic
+        rangeSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                currentDisplayLimit = progress + 1
+                updateRangeLabel()
+                updateChart()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        // Initial launch drawing trigger
+        toggleButtonStyles()
+        updateRangeLabel()
+        updateChart()
     }
 
-    private fun updateChart(mode: HistoryMode) {
+    private fun toggleButtonStyles() {
+        if (currentMode == HistoryMode.DAILY) {
+            btnDailyMode.setTextColor(Color.parseColor("#00E676")) // Active Green
+            btnDailyMode.setBackgroundColor(Color.parseColor("#2D2D2D"))
+
+            btnWeeklyMode.setTextColor(Color.parseColor("#888888")) // Idle Dim Grey
+            btnWeeklyMode.setBackgroundColor(Color.parseColor("#1E1E1E"))
+        } else {
+            btnWeeklyMode.setTextColor(Color.parseColor("#00E676")) // Active Green
+            btnWeeklyMode.setBackgroundColor(Color.parseColor("#2D2D2D"))
+
+            btnDailyMode.setTextColor(Color.parseColor("#888888")) // Idle Dim Grey
+            btnDailyMode.setBackgroundColor(Color.parseColor("#1E1E1E"))
+        }
+    }
+
+    private fun updateRangeLabel() {
+        val suffix = if (currentMode == HistoryMode.WEEKLY) "w" else "d"
+        rangeValueLabel.text = "$currentDisplayLimit$suffix"
+    }
+
+    private fun updateChart() {
         val dailyHistory = loadDailyHistory()
-        val entries = when (mode) {
+        val entries = when (currentMode) {
             HistoryMode.DAILY -> buildDailyChartEntries(dailyHistory)
             HistoryMode.WEEKLY -> buildWeeklyChartEntries(dailyHistory)
         }
-
-        if (entries.isEmpty()) {
-            summaryText.text = getString(R.string.history_empty_message)
-        } else {
-            val total = entries.sumOf { it.value }
-            val average = if (entries.isNotEmpty()) total / entries.size else 0L
-            val max = entries.maxOf { it.value }
-            summaryText.text = getString(
-                R.string.history_summary_format,
-                entries.size,
-                formatDuration(average),
-                formatDuration(max)
-            )
-        }
-
         chartView.setData(entries)
     }
 
@@ -115,15 +142,14 @@ class HistoryActivity : AppCompatActivity() {
         }
 
         records.sortBy { it.dateKey }
-        return if (records.size > 90) records.takeLast(90) else records
+        return if (records.size > 3650) records.takeLast(3650) else records
     }
 
     private fun buildDailyChartEntries(periods: List<UsagePeriod>): List<UsageChartView.ChartEntry> {
         if (periods.isEmpty()) return emptyList()
-        val recent = periods.takeLast(14)
+        val recent = periods.takeLast(currentDisplayLimit)
         return recent.map { period ->
-            val label = toDisplayLabel(period.dateKey)
-            UsageChartView.ChartEntry(label, period.durationMillis)
+            UsageChartView.ChartEntry(toDisplayLabel(period.dateKey), period.durationMillis)
         }
     }
 
@@ -145,7 +171,7 @@ class HistoryActivity : AppCompatActivity() {
         }
 
         val orderedKeys = weeklyTotals.keys.sorted()
-        val limitedKeys = if (orderedKeys.size > 12) orderedKeys.takeLast(12) else orderedKeys
+        val limitedKeys = if (orderedKeys.size > currentDisplayLimit) orderedKeys.takeLast(currentDisplayLimit) else orderedKeys
 
         return limitedKeys.map { key ->
             val labelDate = try {
@@ -179,17 +205,6 @@ class HistoryActivity : AppCompatActivity() {
             if (date != null) displayDateFormat.format(date) else dateKey
         } catch (e: Exception) {
             dateKey
-        }
-    }
-
-    private fun formatDuration(durationMillis: Long): String {
-        val hours = TimeUnit.MILLISECONDS.toHours(durationMillis)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis) % 60
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(durationMillis) % 60
-        return when {
-            hours > 0 -> if (minutes > 0) "${hours}h ${minutes}m" else "${hours}h"
-            minutes > 0 -> if (seconds > 0) "${minutes}m ${seconds}s" else "${minutes}m"
-            else -> "${seconds}s"
         }
     }
 }

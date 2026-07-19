@@ -2,46 +2,83 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#121212"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:paddingLeft="8dp"
+    android:paddingRight="8dp"
+    android:paddingBottom="8dp">
 
-    <TextView
-        android:id="@+id/historyTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/history_title"
-        android:textAppearance="@style/TextAppearance.AppCompat.Large"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/timeframeLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/history_timeframe_label"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
-
-    <Spinner
-        android:id="@+id/modeSpinner"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#1E1E1E"
+        android:padding="4dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginEnd="6dp">
+
+            <TextView
+                android:id="@+id/btnDailyMode"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:text="D"
+                android:textColor="#00E676"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:background="#2D2D2D"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <TextView
+                android:id="@+id/btnWeeklyMode"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:text="W"
+                android:textColor="#888888"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:background="#1E1E1E"
+                android:clickable="true"
+                android:focusable="true"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/rangeValueLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="180d"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:minWidth="42dp"
+            android:gravity="center" />
+
+        <SeekBar
+            android:id="@+id/rangeSeekBar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="179"
+            android:progress="179" />
+
+    </LinearLayout>
 
     <com.example.app_blocker.UsageChartView
         android:id="@+id/usageChartView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
         android:layout_weight="1"
-        android:background="@android:color/transparent" />
-
-    <TextView
-        android:id="@+id/summaryText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/history_empty_message"
-        android:textAlignment="center"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+        android:layout_marginTop="8dp"
+        android:paddingBottom="4dp"
+        android:paddingTop="4dp" />
 
 </LinearLayout>

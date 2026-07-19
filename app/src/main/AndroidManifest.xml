@@ -48,6 +48,10 @@
             android:name=".WakeUpReminderSettingsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".WaterSettingsActivity"
+            android:exported="false" />
+
         <service
             android:name=".TimerService"
             android:enabled="true"
@@ -149,6 +153,15 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.example.app_blocker.ACTION_SERVICE_HEARTBEAT" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".WaterReminderReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.app_blocker.ACTION_WATER_ALARM" />
             </intent-filter>
         </receiver>
 

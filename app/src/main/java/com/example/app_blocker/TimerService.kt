@@ -336,7 +336,7 @@ class TimerService : Service() {
     private fun recordUsageForPreviousDay(durationMillis: Long) {
         val calendar = Calendar.getInstance()
         calendar.add(Calendar.DAY_OF_YEAR, -1)
-    val dateKey = formatDate(calendar.time)
+        val dateKey = formatDate(calendar.time)
 
         val historyString = sharedPreferences.getString("usageHistory", "[]")
         val historyArray = try {
@@ -373,7 +373,9 @@ class TimerService : Service() {
         }
 
         entries.sortBy { it.optString("date") }
-        while (entries.size > 60) {
+
+        // ONLY MODIFICATION TO BASE LAYER: Allow storing up to 10 years of days so 180 weeks aggregate perfectly
+        while (entries.size > 3650) {
             entries.removeAt(0)
         }
 
@@ -540,34 +542,6 @@ class TimerService : Service() {
             .build()
     }
 
-    companion object {
-        const val ACTION_MIDNIGHT_RESET = "com.example.app_blocker.timer.ACTION_MIDNIGHT_RESET"
-        const val ACTION_STOP_TIMER = "com.example.app_blocker.timer.ACTION_STOP"
-        const val ACTION_RESUME_TIMER = "com.example.app_blocker.timer.ACTION_RESUME"
-        private const val RESTART_REQUEST_CODE = 1001
-        private const val RESTART_DELAY_MS = 2_000L
-        private const val NOTIFICATION_ID = 1337
-        private const val NOTIFICATION_CHANNEL_ID = "timer_service_channel"
-        private const val PREF_KEY_PAUSED_FOR_SCREEN_OFF = "timerPausedForScreenOff"
-    private const val PREF_KEY_LAST_RESET_DATE = "timerLastResetDate"
-    private const val RESET_ALARM_REQUEST_CODE = 1101
-    private const val RESET_GRACE_PERIOD_MINUTES = 2
-
-        fun triggerMidnightReset(context: Context) {
-            val intent = Intent(context, TimerService::class.java).apply {
-                action = ACTION_MIDNIGHT_RESET
-            }
-            ContextCompat.startForegroundService(context, intent)
-        }
-
-        fun requestStopTimer(context: Context) {
-            val intent = Intent(context, TimerService::class.java).apply {
-                action = ACTION_STOP_TIMER
-            }
-            ContextCompat.startForegroundService(context, intent)
-        }
-    }
-
     private fun clampPosition(params: WindowManager.LayoutParams) {
         val metrics = resources.displayMetrics
         var viewWidth = when {
@@ -608,4 +582,31 @@ class TimerService : Service() {
         params.y = params.y.coerceIn(0, maxY)
     }
 
+    companion object {
+        const val ACTION_MIDNIGHT_RESET = "com.example.app_blocker.timer.ACTION_MIDNIGHT_RESET"
+        const val ACTION_STOP_TIMER = "com.example.app_blocker.timer.ACTION_STOP"
+        const val ACTION_RESUME_TIMER = "com.example.app_blocker.timer.ACTION_RESUME"
+        private const val RESTART_REQUEST_CODE = 1001
+        private const val RESTART_DELAY_MS = 2_000L
+        private const val NOTIFICATION_ID = 1337
+        private const val NOTIFICATION_CHANNEL_ID = "timer_service_channel"
+        private const val PREF_KEY_PAUSED_FOR_SCREEN_OFF = "timerPausedForScreenOff"
+        private const val PREF_KEY_LAST_RESET_DATE = "timerLastResetDate"
+        private const val RESET_ALARM_REQUEST_CODE = 1101
+        private const val RESET_GRACE_PERIOD_MINUTES = 2
+
+        fun triggerMidnightReset(context: Context) {
+            val intent = Intent(context, TimerService::class.java).apply {
+                action = ACTION_MIDNIGHT_RESET
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun requestStopTimer(context: Context) {
+            val intent = Intent(context, TimerService::class.java).apply {
+                action = ACTION_STOP_TIMER
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+    }
 }

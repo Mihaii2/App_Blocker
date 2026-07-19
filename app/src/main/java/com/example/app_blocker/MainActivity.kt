@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.SeekBar
@@ -35,7 +34,6 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate: Activity created.")
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -53,6 +51,10 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
         delayInput.setText(sharedPreferences.getInt("blockingDelay", 500).toString())
         transparencySeekBar.progress = (sharedPreferences.getFloat("timerTransparency", 0.8f) * 100).toInt()
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+        }
+
         blockingSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (!isChecked) {
                 val dialog = CountdownDialogFragment.newInstance("You have to wait 30 seconds before disabling blocking", "Disable")
@@ -68,47 +70,42 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
                 val transparency = progress / 100f
                 sharedPreferences.edit().putFloat("timerTransparency", transparency).apply()
             }
-
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 restartTimerService()
             }
         })
 
         findViewById<Button>(R.id.manageKeywordsButton).setOnClickListener {
-            Log.d(TAG, "onCreate: Manage Keywords button clicked.")
             startActivity(Intent(this, KeywordsActivity::class.java))
         }
 
+        // Launch the isolated water configuration dashboard view
+        findViewById<Button>(R.id.waterSettingsButton).setOnClickListener {
+            startActivity(Intent(this, WaterSettingsActivity::class.java))
+        }
+
         findViewById<Button>(R.id.enableServiceButton).setOnClickListener {
-            Log.d(TAG, "onCreate: Enable Service button clicked.")
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
-        
+
         findViewById<Button>(R.id.enableAutostartButton).setOnClickListener {
-            val intent = Intent()
-            intent.component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
-            startActivity(intent)
+            try {
+                val intent = Intent()
+                intent.component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Autostart settings shortcut not supported on this device.", Toast.LENGTH_SHORT).show()
+            }
         }
 
         findViewById<Button>(R.id.startTrackingButton).setOnClickListener {
-            val intent = Intent(this, ScreenTimeTrackerService::class.java)
-            startService(intent)
-            // Trigger immediate heartbeat and schedule periodic restarts
+            startService(Intent(this, ScreenTimeTrackerService::class.java))
             ServiceHeartbeatReceiver.triggerImmediateHeartbeat(this)
         }
 
         findViewById<Button>(R.id.historyButton).setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
-        }
-
-        findViewById<Button>(R.id.sleepReminderSettingsButton).setOnClickListener {
-            startActivity(Intent(this, SleepReminderSettingsActivity::class.java))
-        }
-
-        findViewById<Button>(R.id.wakeUpReminderSettingsButton).setOnClickListener {
-            startActivity(Intent(this, WakeUpReminderSettingsActivity::class.java))
         }
 
         requestIgnoreBatteryOptimizations()
@@ -123,28 +120,22 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
 
     override fun onResume() {
         super.onResume()
-        // Trigger immediate heartbeat to start services and schedule periodic restarts
-        // This ensures services start automatically when the app is opened (including first install)
         ServiceHeartbeatReceiver.triggerImmediateHeartbeat(this)
     }
 
     override fun onPause() {
         super.onPause()
-        val delay = delayInput.text.toString().toIntOrNull() ?: 1000
+        val delay = delayInput.text.toString().toIntOrNull() ?: 500
         sharedPreferences.edit().putInt("blockingDelay", delay).apply()
     }
 
     private fun requestIgnoreBatteryOptimizations() {
         val intent = Intent()
-        val packageName = packageName
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            Log.d(TAG, "requestIgnoreBatteryOptimizations: Requesting to ignore battery optimizations.")
             intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
             intent.data = Uri.parse("package:$packageName")
             startActivity(intent)
-        } else {
-            Log.d(TAG, "requestIgnoreBatteryOptimizations: Already ignoring battery optimizations.")
         }
     }
 
@@ -160,6 +151,7 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
     private fun scheduleMidnightReset() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, MidnightReceiver::class.java).apply {
+            action = "com.example.app_blocker.MIDY"
             action = "com.example.app_blocker.MIDNIGHT"
         }
         val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
@@ -169,7 +161,8 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
-            add(Calendar.DAY_OF_YEAR, 1) // Set for tomorrow midnight
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1)
         }
 
         alarmManager.setInexactRepeating(
@@ -184,18 +177,14 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == OVERLAY_PERMISSION_CODE) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (Settings.canDrawOverlays(this)) {
-                    // Permission granted
-                } else {
+                if (!Settings.canDrawOverlays(this)) {
                     Toast.makeText(this, "Overlay permission is required for the timer to work.", Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
 
-    override fun onDialogDismissed() {
-        // Nothing to do here
-    }
+    override fun onDialogDismissed() {}
 
     override fun onActionConfirmed() {
         blockingSwitch.setOnCheckedChangeListener(null)
