@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
+    android:id="@+id/mainRootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#121212"
     android:fillViewport="true"
+    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -17,7 +18,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="16dp"
             android:text="Focus &amp; App Blocker"
             android:textColor="#FFFFFF"
             android:textSize="26sp"
@@ -27,7 +28,7 @@
             android:id="@+id/blockingSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="24dp"
             android:text="Enable Keyword Blocking Protection"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
@@ -35,7 +36,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="20dp"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
@@ -61,7 +62,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="20dp"
             android:text="Timer Float Transparency"
             android:textColor="#BBBBBB"
             android:textSize="14sp" />
@@ -78,15 +79,15 @@
             android:id="@+id/manageKeywordsButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="36dp"
+            android:layout_marginTop="28dp"
             android:text="Configure Rules &amp; Keywords" />
 
         <Button
-            android:id="@+id/waterSettingsButton"
+            android:id="@+id/notificationSchedulerButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Configure Water Reminders" />
+            android:text="Configure Scheduled Notifications" />
 
         <Button
             android:id="@+id/historyButton"
@@ -96,24 +97,28 @@
             android:text="View Usage History Metrics" />
 
         <Button
+            android:id="@+id/btnCommitStorageMain"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#1B5E20"
+            android:text="Commit Data to Storage"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <Button
             android:id="@+id/enableServiceButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="20dp"
             android:text="Open System Accessibility Settings" />
-
-        <Button
-            android:id="@+id/startTrackingButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Initialize Tracking Core" />
 
         <Button
             android:id="@+id/enableAutostartButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:layout_marginBottom="24dp"
             android:text="Configure System Autostart" />
 
     </LinearLayout>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootSchedulerLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Notification Scheduler"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- Global Rest / Awake Window -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="#1E1E1E"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Global Awake Window:"
+            android:textColor="#BBBBBB"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/globalStartInput"
+            android:layout_width="45dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:hint="10"
+            android:gravity="center"
+            android:inputType="number"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#555555"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="4dp"
+            android:layout_marginRight="4dp"
+            android:text="to"
+            android:textColor="#BBBBBB" />
+
+        <EditText
+            android:id="@+id/globalEndInput"
+            android:layout_width="45dp"
+            android:layout_height="wrap_content"
+            android:hint="22"
+            android:gravity="center"
+            android:inputType="number"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#555555"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="h"
+            android:textColor="#BBBBBB" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:id="@+id/listContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <Button
+        android:id="@+id/btnAddNotification"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#00E676"
+        android:text="+ Add Notification"
+        android:textColor="#000000"
+        android:textStyle="bold" />
+
+</LinearLayout>

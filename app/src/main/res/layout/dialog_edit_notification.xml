@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Type Selector -->
+        <RadioGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rbInterval"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Repeat every N min"
+                android:textColor="#FFFFFF" />
+
+            <RadioButton
+                android:id="@+id/rbExact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="Exact Time"
+                android:textColor="#FFFFFF" />
+        </RadioGroup>
+
+        <!-- Interval Input + Realtime Hours Display -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Interval (mins): "
+                android:textColor="#BBBBBB" />
+
+            <EditText
+                android:id="@+id/editInterval"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:hint="60"
+                android:inputType="number"
+                android:textColor="#FFFFFF" />
+
+            <TextView
+                android:id="@+id/txtIntervalHoursPreview"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="(1.0h)"
+                android:textColor="#00E676"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Exact Time Input -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Time (HH:MM): "
+                android:textColor="#BBBBBB" />
+
+            <EditText
+                android:id="@+id/editHour"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:hint="14"
+                android:inputType="number"
+                android:textColor="#FFFFFF" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=":"
+                android:textColor="#FFFFFF" />
+
+            <EditText
+                android:id="@+id/editMinute"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:hint="30"
+                android:inputType="number"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
+
+        <!-- Select All Days Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Repeat Days:"
+                android:textColor="#BBBBBB" />
+
+            <CheckBox
+                android:id="@+id/chkSelectAll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select All Days"
+                android:textColor="#00E676"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 7-Day Distributed Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <CheckBox android:id="@+id/chkMon" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="M" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkTue" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkWed" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="W" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkThu" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkFri" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="F" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkSat" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkSun" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+        </LinearLayout>
+
+        <!-- Title & Text Inputs -->
+        <EditText
+            android:id="@+id/editTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Title (Optional)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#555555" />
+
+        <EditText
+            android:id="@+id/editText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Notification Text / Label"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#555555" />
+
+        <!-- DYNAMIC CALCULATED NEXT RUN PREVIEW BANNER -->
+        <TextView
+            android:id="@+id/txtNextRunPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="#1E1E1E"
+            android:padding="10dp"
+            android:text="Next run: Calculating..."
+            android:textColor="#00E676"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+    </LinearLayout>
+</ScrollView>

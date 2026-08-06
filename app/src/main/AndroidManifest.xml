@@ -14,6 +14,7 @@
 
 
     <application
+        android:name=".AppBlockerApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -49,7 +50,7 @@
             android:exported="false" />
 
         <activity
-            android:name=".WaterSettingsActivity"
+            android:name=".NotificationSchedulerActivity"
             android:exported="false" />
 
         <service
@@ -157,7 +158,7 @@
         </receiver>
 
         <receiver
-            android:name=".WaterReminderReceiver"
+            android:name=".NotificationSchedulerReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
