@@ -3,6 +3,7 @@ package com.example.app_blocker
 import android.app.AlertDialog
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -107,6 +108,19 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             txtDays.text = item.getDaysSummary()
             itemSwitch.isChecked = item.enabled
 
+            // Style active vs disabled/off notifications cleanly
+            if (item.enabled) {
+                view.setBackgroundColor(Color.parseColor("#222222"))
+                txtTime.setTextColor(Color.parseColor("#66BBBA")) // Softer accent
+                txtLabel.setTextColor(Color.parseColor("#FFFFFF"))
+                txtDays.setTextColor(Color.parseColor("#AAAAAA"))
+            } else {
+                view.setBackgroundColor(Color.parseColor("#161616")) // Darker gray for disabled
+                txtTime.setTextColor(Color.parseColor("#555555"))
+                txtLabel.setTextColor(Color.parseColor("#666666"))
+                txtDays.setTextColor(Color.parseColor("#444444"))
+            }
+
             itemSwitch.setOnCheckedChangeListener { _, isChecked ->
                 item.enabled = isChecked
                 if (isChecked) {
@@ -163,30 +177,6 @@ class NotificationSchedulerActivity : AppCompatActivity() {
         dayMap.forEach { (dayCode, chk) -> chk.isChecked = target.days.contains(dayCode) }
         chkSelectAll.isChecked = target.days.size == 7
 
-        val selectIntervalRadio = {
-            if (!rbInterval.isChecked) {
-                rbInterval.isChecked = true
-                rbExact.isChecked = false
-            }
-        }
-
-        val selectExactRadio = {
-            if (!rbExact.isChecked) {
-                rbExact.isChecked = true
-                rbInterval.isChecked = false
-            }
-        }
-
-        editInterval.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) selectIntervalRadio() }
-        editInterval.setOnClickListener { selectIntervalRadio() }
-
-        editHour.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) selectExactRadio() }
-        editHour.setOnClickListener { selectExactRadio() }
-
-        editMinute.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) selectExactRadio() }
-        editMinute.setOnClickListener { selectExactRadio() }
-
-        // DAY/HOUR/MINUTE FORMATTING HELPER
         fun formatDuration(totalMins: Int): String {
             val days = totalMins / (24 * 60)
             val remainingMinsAfterDays = totalMins % (24 * 60)
@@ -201,7 +191,6 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             return parts.joinToString(" ")
         }
 
-        // ACCURATE DAY-AWARE NEXT RUN CALCULATOR
         val calculateNextRun = {
             val now = Calendar.getInstance()
             val timeFormat = SimpleDateFormat("HH:mm", Locale.US)
@@ -257,19 +246,66 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             calculateNextRun()
         }
 
-        updateHoursPreview()
+        val selectIntervalRadio = {
+            if (!rbInterval.isChecked) {
+                rbInterval.isChecked = true
+                rbExact.isChecked = false
+            }
+            updateHoursPreview()
+        }
 
-        val watcher = object : TextWatcher {
+        val selectExactRadio = {
+            if (!rbExact.isChecked) {
+                rbExact.isChecked = true
+                rbInterval.isChecked = false
+            }
+            updateHoursPreview()
+        }
+
+        // TRIGGER CALCULATION IMMEDIATELY ON TEXTBOX SELECTION/FOCUS
+        editInterval.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) selectIntervalRadio()
+        }
+        editInterval.setOnClickListener { selectIntervalRadio() }
+
+        editHour.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) selectExactRadio()
+        }
+        editHour.setOnClickListener { selectExactRadio() }
+
+        editMinute.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) selectExactRadio()
+        }
+        editMinute.setOnClickListener { selectExactRadio() }
+
+        // AUTO-ADVANCE FROM HH TO MM WHEN 2 DIGITS ARE ENTERED
+        editHour.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                updateHoursPreview()
+                if (s?.length == 2) {
+                    editMinute.requestFocus()
+                    editMinute.selectAll()
+                }
+            }
+        })
+
+        editInterval.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 updateHoursPreview()
             }
-        }
+        })
 
-        editInterval.addTextChangedListener(watcher)
-        editHour.addTextChangedListener(watcher)
-        editMinute.addTextChangedListener(watcher)
+        editMinute.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                updateHoursPreview()
+            }
+        })
 
         dayCheckBoxes.forEach { chk ->
             chk.setOnCheckedChangeListener { _, _ -> calculateNextRun() }
@@ -282,6 +318,8 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             dayCheckBoxes.forEach { it.isChecked = isChecked }
             calculateNextRun()
         }
+
+        updateHoursPreview()
 
         builder.setView(view)
             .setTitle(if (existingItem == null) "Add Notification" else "Edit Notification")

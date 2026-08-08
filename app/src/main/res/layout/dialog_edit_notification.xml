@@ -57,8 +57,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="(1.0h)"
-                android:textColor="#00E676"
+                android:text="(1h)"
+                android:textColor="#66BB6A"
                 android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -81,6 +81,7 @@
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:hint="14"
+                android:maxLength="2"
                 android:inputType="number"
                 android:textColor="#FFFFFF" />
 
@@ -95,6 +96,7 @@
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:hint="30"
+                android:maxLength="2"
                 android:inputType="number"
                 android:textColor="#FFFFFF" />
         </LinearLayout>
@@ -118,7 +120,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Select All Days"
-                android:textColor="#00E676"
+                android:textColor="#66BB6A"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -166,7 +168,7 @@
             android:background="#1E1E1E"
             android:padding="10dp"
             android:text="Next run: Calculating..."
-            android:textColor="#00E676"
+            android:textColor="#66BB6A"
             android:textSize="13sp"
             android:textStyle="bold"
             android:gravity="center" />

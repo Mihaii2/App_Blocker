@@ -11,7 +11,6 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
-import org.json.JSONArray
 import java.util.Calendar
 
 class NotificationSchedulerReceiver : BroadcastReceiver() {
@@ -44,14 +43,12 @@ class NotificationSchedulerReceiver : BroadcastReceiver() {
             if (item.isInterval) {
                 if (isWithinGlobalHours) {
                     val requiredIntervalMillis = item.intervalMinutes * 60 * 1000L
-                    // Only trigger if enough time has passed since creation/last run
                     if (nowMillis - item.lastTriggeredMillis >= requiredIntervalMillis) {
                         shouldTrigger = true
                     }
                 }
             } else {
                 if (item.exactHour == currentHour && Math.abs(item.exactMinute - currentMinute) <= 1) {
-                    // Prevent duplicate exact-time triggers within the same minute
                     if (nowMillis - item.lastTriggeredMillis >= 120_000L) {
                         shouldTrigger = true
                     }
@@ -111,24 +108,23 @@ class NotificationSchedulerReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_SCHEDULER_ALARM = "com.example.app_blocker.ACTION_SCHEDULER_ALARM"
 
+        // NOW SAVES AND LOADS USING `StringSet` EXACTLY LIKE KEYWORDS ACTIVITY
         fun loadNotifications(prefs: SharedPreferences): List<NotificationItem> {
-            val jsonStr = prefs.getString("notificationItemsJson", "[]") ?: "[]"
+            val stringSet = prefs.getStringSet("notifications", emptySet()) ?: emptySet()
             val list = mutableListOf<NotificationItem>()
-            try {
-                val array = JSONArray(jsonStr)
-                for (i in 0 until array.length()) {
-                    list.add(NotificationItem.fromJson(array.getJSONObject(i)))
+            for (str in stringSet) {
+                try {
+                    list.add(NotificationItem.fromStorageString(str))
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
             return list
         }
 
         fun saveNotifications(prefs: SharedPreferences, list: List<NotificationItem>) {
-            val array = JSONArray()
-            list.forEach { array.put(it.toJson()) }
-            prefs.edit().putString("notificationItemsJson", array.toString()).apply()
+            val stringSet = list.map { it.toStorageString() }.toSet()
+            prefs.edit().putStringSet("notifications", stringSet).apply()
         }
 
         fun scheduleNextCheck(context: Context) {

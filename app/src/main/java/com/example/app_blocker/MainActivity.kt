@@ -56,14 +56,14 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
                 dialog.show(supportFragmentManager, "CountdownDialogFragment")
                 blockingSwitch.isChecked = true
             } else {
-                sharedPreferences.edit().putBoolean("blockingEnabled", true).commit()
+                sharedPreferences.edit().putBoolean("blockingEnabled", true).apply()
             }
         }
 
         transparencySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val transparency = progress / 100f
-                sharedPreferences.edit().putFloat("timerTransparency", transparency).commit()
+                sharedPreferences.edit().putFloat("timerTransparency", transparency).apply()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
@@ -83,30 +83,26 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
             startActivity(Intent(this, HistoryActivity::class.java))
         }
 
-        // MASTER COMMIT TO DISK
+        // COMMIT ALL STRING SETS TO DISK PERSISTENTLY
         btnCommitStorageMain.setOnClickListener {
             val delay = delayInput.text.toString().toIntOrNull() ?: 500
-
-            // Re-read latest raw values from disk storage
             val freshPrefs = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
-            val currentKeywords = freshPrefs.getStringSet("blockedKeywords", emptySet()) ?: emptySet()
-            val currentNotificationsJson = freshPrefs.getString("notificationItemsJson", "[]") ?: "[]"
-            val isEnabled = blockingSwitch.isChecked
-            val transparency = transparencySeekBar.progress / 100f
 
-            // Write all values synchronously directly to hardware storage
+            val currentKeywords = freshPrefs.getStringSet("keywords", emptySet()) ?: emptySet()
+            val currentNotifications = freshPrefs.getStringSet("notifications", emptySet()) ?: emptySet()
+
             val success = freshPrefs.edit()
                 .putInt("blockingDelay", delay)
-                .putBoolean("blockingEnabled", isEnabled)
-                .putFloat("timerTransparency", transparency)
-                .putStringSet("blockedKeywords", currentKeywords)
-                .putString("notificationItemsJson", currentNotificationsJson)
+                .putBoolean("blockingEnabled", blockingSwitch.isChecked)
+                .putFloat("timerTransparency", transparencySeekBar.progress / 100f)
+                .putStringSet("keywords", currentKeywords)
+                .putStringSet("notifications", currentNotifications)
                 .commit()
 
             if (success) {
-                Toast.makeText(this, "Master Sync: Keywords, Notifications & Settings saved to disk!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Committed keywords, notifications & settings to disk!", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Failed to write data to storage", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed to commit data", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -145,7 +141,7 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
     override fun onPause() {
         super.onPause()
         val delay = delayInput.text.toString().toIntOrNull() ?: 500
-        sharedPreferences.edit().putInt("blockingDelay", delay).commit()
+        sharedPreferences.edit().putInt("blockingDelay", delay).apply()
     }
 
     private fun requestIgnoreBatteryOptimizations() {
@@ -207,14 +203,14 @@ class MainActivity : AppCompatActivity(), CountdownDialogFragment.CountdownDialo
     override fun onActionConfirmed() {
         blockingSwitch.setOnCheckedChangeListener(null)
         blockingSwitch.isChecked = false
-        sharedPreferences.edit().putBoolean("blockingEnabled", false).commit()
+        sharedPreferences.edit().putBoolean("blockingEnabled", false).apply()
         blockingSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (!isChecked) {
                 val dialog = CountdownDialogFragment.newInstance("You have to wait 30 seconds before disabling blocking", "Disable")
                 dialog.show(supportFragmentManager, "CountdownDialogFragment")
                 blockingSwitch.isChecked = true
             } else {
-                sharedPreferences.edit().putBoolean("blockingEnabled", true).commit()
+                sharedPreferences.edit().putBoolean("blockingEnabled", true).apply()
             }
         }
     }

@@ -1,7 +1,5 @@
 package com.example.app_blocker
 
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Locale
 
 data class NotificationItem(
@@ -17,42 +15,38 @@ data class NotificationItem(
     var lastTriggeredMillis: Long = System.currentTimeMillis()
 ) : Comparable<NotificationItem> {
 
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
-            put("id", id)
-            put("enabled", enabled)
-            put("title", title)
-            put("text", text)
-            put("isInterval", isInterval)
-            put("intervalMinutes", intervalMinutes)
-            put("exactHour", exactHour)
-            put("exactMinute", exactMinute)
-            put("days", JSONArray(days))
-            put("lastTriggeredMillis", lastTriggeredMillis)
-        }
+    // Converts object into a single delimiter-separated string format like KeywordsActivity
+    fun toStorageString(): String {
+        val daysJoined = days.joinToString(",")
+        return "$id|$enabled|$title|$text|$isInterval|$intervalMinutes|$exactHour|$exactMinute|$daysJoined|$lastTriggeredMillis"
     }
 
     companion object {
-        fun fromJson(json: JSONObject): NotificationItem {
+        fun fromStorageString(str: String): NotificationItem {
+            val parts = str.split("|")
+            if (parts.size < 10) return NotificationItem()
+
+            val id = parts[0].toLongOrNull() ?: System.currentTimeMillis()
+            val enabled = parts[1].toBooleanStrictOrNull() ?: true
+            val title = parts[2]
+            val text = parts[3]
+            val isInterval = parts[4].toBooleanStrictOrNull() ?: true
+            val intervalMinutes = parts[5].toIntOrNull() ?: 60
+            val exactHour = parts[6].toIntOrNull() ?: 12
+            val exactMinute = parts[7].toIntOrNull() ?: 0
+
             val daysSet = mutableSetOf<Int>()
-            val daysArray = json.optJSONArray("days")
-            if (daysArray != null) {
-                for (i in 0 until daysArray.length()) {
-                    daysSet.add(daysArray.getInt(i))
+            if (parts[8].isNotBlank()) {
+                parts[8].split(",").forEach {
+                    it.toIntOrNull()?.let { day -> daysSet.add(day) }
                 }
             }
 
+            val lastTriggered = parts[9].toLongOrNull() ?: System.currentTimeMillis()
+
             return NotificationItem(
-                id = json.optLong("id", System.currentTimeMillis()),
-                enabled = json.optBoolean("enabled", true),
-                title = json.optString("title", ""),
-                text = json.optString("text", "Notification"),
-                isInterval = json.optBoolean("isInterval", true),
-                intervalMinutes = json.optInt("intervalMinutes", 60),
-                exactHour = json.optInt("exactHour", 12),
-                exactMinute = json.optInt("exactMinute", 0),
-                days = daysSet,
-                lastTriggeredMillis = json.optLong("lastTriggeredMillis", System.currentTimeMillis())
+                id, enabled, title, text, isInterval,
+                intervalMinutes, exactHour, exactMinute, daysSet, lastTriggered
             )
         }
     }
