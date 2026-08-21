@@ -8,7 +8,10 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -44,6 +47,13 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             insets
         }
 
+        findViewById<View>(R.id.rootSchedulerLayout).setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                hideKeyboard(currentFocus)
+            }
+            false
+        }
+
         sharedPrefs = getSharedPreferences("AppBlockerPrefs", Context.MODE_PRIVATE)
         listContainer = findViewById(R.id.listContainer)
         globalStartInput = findViewById(R.id.globalStartInput)
@@ -71,6 +81,14 @@ class NotificationSchedulerActivity : AppCompatActivity() {
 
         loadData()
         NotificationSchedulerReceiver.scheduleNextCheck(this)
+    }
+
+    private fun hideKeyboard(view: View?) {
+        if (view != null) {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.hideSoftInputFromWindow(view.windowToken, 0)
+            view.clearFocus()
+        }
     }
 
     override fun onResume() {
@@ -108,14 +126,13 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             txtDays.text = item.getDaysSummary()
             itemSwitch.isChecked = item.enabled
 
-            // Style active vs disabled/off notifications cleanly
             if (item.enabled) {
                 view.setBackgroundColor(Color.parseColor("#222222"))
-                txtTime.setTextColor(Color.parseColor("#66BBBA")) // Softer accent
+                txtTime.setTextColor(Color.parseColor("#66BBBA"))
                 txtLabel.setTextColor(Color.parseColor("#FFFFFF"))
                 txtDays.setTextColor(Color.parseColor("#AAAAAA"))
             } else {
-                view.setBackgroundColor(Color.parseColor("#161616")) // Darker gray for disabled
+                view.setBackgroundColor(Color.parseColor("#161616"))
                 txtTime.setTextColor(Color.parseColor("#555555"))
                 txtLabel.setTextColor(Color.parseColor("#666666"))
                 txtDays.setTextColor(Color.parseColor("#444444"))
@@ -262,23 +279,29 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             updateHoursPreview()
         }
 
-        // TRIGGER CALCULATION IMMEDIATELY ON TEXTBOX SELECTION/FOCUS
+        // RECALCULATE ON EVERY FOCUS AND CLICK
         editInterval.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) selectIntervalRadio()
+            if (hasFocus) selectIntervalRadio() else updateHoursPreview()
         }
         editInterval.setOnClickListener { selectIntervalRadio() }
 
         editHour.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) selectExactRadio()
+            if (hasFocus) selectExactRadio() else updateHoursPreview()
         }
         editHour.setOnClickListener { selectExactRadio() }
 
         editMinute.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) selectExactRadio()
+            if (hasFocus) selectExactRadio() else updateHoursPreview()
         }
         editMinute.setOnClickListener { selectExactRadio() }
 
-        // AUTO-ADVANCE FROM HH TO MM WHEN 2 DIGITS ARE ENTERED
+        editTitle.setOnFocusChangeListener { _, _ -> updateHoursPreview() }
+        editTitle.setOnClickListener { updateHoursPreview() }
+
+        editText.setOnFocusChangeListener { _, _ -> updateHoursPreview() }
+        editText.setOnClickListener { updateHoursPreview() }
+
+        // RECALCULATE ON TEXT MODIFICATIONS
         editHour.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -307,16 +330,42 @@ class NotificationSchedulerActivity : AppCompatActivity() {
             }
         })
 
+        editTitle.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                updateHoursPreview()
+            }
+        })
+
+        editText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                updateHoursPreview()
+            }
+        })
+
+        // RECALCULATE ON TOGGLES AND CHECKS
         dayCheckBoxes.forEach { chk ->
-            chk.setOnCheckedChangeListener { _, _ -> calculateNextRun() }
+            chk.setOnCheckedChangeListener { _, _ -> updateHoursPreview() }
         }
 
-        rbInterval.setOnCheckedChangeListener { _, isChecked -> if (isChecked) calculateNextRun() }
-        rbExact.setOnCheckedChangeListener { _, isChecked -> if (isChecked) calculateNextRun() }
+        rbInterval.setOnCheckedChangeListener { _, isChecked -> if (isChecked) updateHoursPreview() }
+        rbExact.setOnCheckedChangeListener { _, isChecked -> if (isChecked) updateHoursPreview() }
 
         chkSelectAll.setOnCheckedChangeListener { _, isChecked ->
             dayCheckBoxes.forEach { it.isChecked = isChecked }
-            calculateNextRun()
+            updateHoursPreview()
+        }
+
+        // HIDE KEYBOARD AND RECALCULATE ON TOUCH OUTSIDE
+        view.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                hideKeyboard(view.findFocus())
+                updateHoursPreview()
+            }
+            false
         }
 
         updateHoursPreview()

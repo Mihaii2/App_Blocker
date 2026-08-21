@@ -2,7 +2,10 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp">
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="2dp"
+    android:paddingBottom="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,6 +22,7 @@
                 android:id="@+id/rbInterval"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minHeight="36dp"
                 android:text="Repeat every N min"
                 android:textColor="#FFFFFF" />
 
@@ -27,6 +31,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
+                android:minHeight="36dp"
                 android:text="Exact Time"
                 android:textColor="#FFFFFF" />
         </RadioGroup>
@@ -35,7 +40,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="2dp"
             android:gravity="center_vertical">
 
             <TextView
@@ -48,6 +53,8 @@
                 android:id="@+id/editInterval"
                 android:layout_width="60dp"
                 android:layout_height="wrap_content"
+                android:paddingTop="2dp"
+                android:paddingBottom="8dp"
                 android:hint="60"
                 android:inputType="number"
                 android:textColor="#FFFFFF" />
@@ -67,7 +74,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="2dp"
             android:gravity="center_vertical">
 
             <TextView
@@ -80,6 +87,8 @@
                 android:id="@+id/editHour"
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
+                android:paddingTop="2dp"
+                android:paddingBottom="8dp"
                 android:hint="14"
                 android:maxLength="2"
                 android:inputType="number"
@@ -95,6 +104,8 @@
                 android:id="@+id/editMinute"
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
+                android:paddingTop="2dp"
+                android:paddingBottom="8dp"
                 android:hint="30"
                 android:maxLength="2"
                 android:inputType="number"
@@ -105,7 +116,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="4dp"
             android:gravity="center_vertical">
 
             <TextView
@@ -119,6 +130,7 @@
                 android:id="@+id/chkSelectAll"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minHeight="36dp"
                 android:text="Select All Days"
                 android:textColor="#66BB6A"
                 android:textSize="12sp" />
@@ -128,16 +140,16 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="2dp"
             android:orientation="horizontal">
 
-            <CheckBox android:id="@+id/chkMon" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="M" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
-            <CheckBox android:id="@+id/chkTue" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
-            <CheckBox android:id="@+id/chkWed" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="W" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
-            <CheckBox android:id="@+id/chkThu" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
-            <CheckBox android:id="@+id/chkFri" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="F" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
-            <CheckBox android:id="@+id/chkSat" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
-            <CheckBox android:id="@+id/chkSun" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkMon" android:layout_width="0dp" android:layout_height="wrap_content" android:minHeight="36dp" android:layout_weight="1" android:text="M" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkTue" android:layout_width="0dp" android:layout_height="wrap_content" android:minHeight="36dp" android:layout_weight="1" android:text="T" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkWed" android:layout_width="0dp" android:layout_height="wrap_content" android:minHeight="36dp" android:layout_weight="1" android:text="W" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkThu" android:layout_width="0dp" android:layout_height="wrap_content" android:minHeight="36dp" android:layout_weight="1" android:text="T" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkFri" android:layout_width="0dp" android:layout_height="wrap_content" android:minHeight="36dp" android:layout_weight="1" android:text="F" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkSat" android:layout_width="0dp" android:layout_height="wrap_content" android:minHeight="36dp" android:layout_weight="1" android:text="S" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
+            <CheckBox android:id="@+id/chkSun" android:layout_width="0dp" android:layout_height="wrap_content" android:minHeight="36dp" android:layout_weight="1" android:text="S" android:textColor="#FFF" android:paddingStart="0dp" android:paddingEnd="0dp"/>
         </LinearLayout>
 
         <!-- Title & Text Inputs -->
@@ -145,7 +157,9 @@
             android:id="@+id/editTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="2dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="10dp"
             android:hint="Title (Optional)"
             android:textColor="#FFFFFF"
             android:textColorHint="#555555" />
@@ -154,7 +168,9 @@
             android:id="@+id/editText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="2dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="10dp"
             android:hint="Notification Text / Label"
             android:textColor="#FFFFFF"
             android:textColorHint="#555555" />
@@ -164,12 +180,12 @@
             android:id="@+id/txtNextRunPreview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="6dp"
             android:background="#1E1E1E"
-            android:padding="10dp"
+            android:padding="6dp"
             android:text="Next run: Calculating..."
             android:textColor="#66BB6A"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:gravity="center" />
 

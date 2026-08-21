@@ -33,6 +33,7 @@ class NotificationSchedulerReceiver : BroadcastReceiver() {
         var listModified = false
 
         for (item in notifications) {
+            // Guard against disabled notifications
             if (!item.enabled) continue
 
             val matchesDay = item.days.isEmpty() || item.days.contains(currentDayOfWeek)
@@ -48,8 +49,9 @@ class NotificationSchedulerReceiver : BroadcastReceiver() {
                     }
                 }
             } else {
-                if (item.exactHour == currentHour && Math.abs(item.exactMinute - currentMinute) <= 1) {
-                    if (nowMillis - item.lastTriggeredMillis >= 120_000L) {
+                // Exact time trigger: hour & minute match, with a 12-hour minimum guard to prevent duplicate firing across checks
+                if (item.exactHour == currentHour && item.exactMinute == currentMinute) {
+                    if (nowMillis - item.lastTriggeredMillis >= 12 * 3600 * 1000L) {
                         shouldTrigger = true
                     }
                 }
@@ -60,6 +62,7 @@ class NotificationSchedulerReceiver : BroadcastReceiver() {
                 item.lastTriggeredMillis = nowMillis
                 listModified = true
 
+                // Single-run "Once" items disable immediately
                 if (item.days.isEmpty()) {
                     item.enabled = false
                 }
@@ -86,7 +89,7 @@ class NotificationSchedulerReceiver : BroadcastReceiver() {
 
         val openIntent = Intent(context, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            context, item.id.hashCode(), openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val builder = NotificationCompat.Builder(context, channelId)
@@ -102,13 +105,12 @@ class NotificationSchedulerReceiver : BroadcastReceiver() {
             builder.setContentTitle(item.text)
         }
 
-        notificationManager.notify(item.id.toInt(), builder.build())
+        notificationManager.notify(item.id.hashCode(), builder.build())
     }
 
     companion object {
         const val ACTION_SCHEDULER_ALARM = "com.example.app_blocker.ACTION_SCHEDULER_ALARM"
 
-        // NOW SAVES AND LOADS USING `StringSet` EXACTLY LIKE KEYWORDS ACTIVITY
         fun loadNotifications(prefs: SharedPreferences): List<NotificationItem> {
             val stringSet = prefs.getStringSet("notifications", emptySet()) ?: emptySet()
             val list = mutableListOf<NotificationItem>()
